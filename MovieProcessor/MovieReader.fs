@@ -3,6 +3,7 @@ open System
 open System.Collections.Generic
 open System.IO
 open FSharp.Data
+open MovieProcessor.Logger
 open MovieProcessor.Movie
 
 module MovieLoader =
@@ -30,7 +31,7 @@ module MovieLoader =
     type MovieCodesProvider = CsvProvider<"titleId	ordering	title	region	language	types	attributes	isOriginalTitle", IgnoreErrors=true, CacheRows=false>
     type TagScoresProvider = CsvProvider<"movieId,tagId,relevance", IgnoreErrors=true, CacheRows=false>
 
-    let load path =
+    let load (path : string) (logger : ILogger) =
         if (Path.Exists(path) |> not) then raise <| ArgumentException($"Path {path} does not exist")
 
         let actorsDirectorsCodes =
@@ -74,10 +75,10 @@ module MovieLoader =
             |> TagScoresProvider.Load
             
         // Dictionaries for fast loading
-        printfn "Organizing data into dictionaries"
-        printfn "Tag Codes"
+        logger.info "Organizing data into dictionaries"
+        logger.info "Tag Codes"
         let tagCodesDict = dictByField (fun (x : TagCodesProvider.Row) -> x.TagId) tagCodes.Rows
-        printfn "Movie ID Links"
+        logger.info "Movie ID Links"
         let imdbOfMl = dictByField (fun (x : LinksProvider.Row) -> x.MovieId) linksImdbMovieLens.Rows
 
         // IMDB ID to Movie
@@ -91,15 +92,15 @@ module MovieLoader =
         let intOfId = fun (t : string) -> t.Substring(2) |> int
         
         // Create movie with empty tags and no rating
-        printfn "Loading movies"
+        logger.info "Loading movies"
         for row in ruEn do
             let imdbId = row.TitleId
             ruEnImdbIds.Add imdbId |> ignore
             let movie = Movie(row.Title, HashSet<Tag>([]))
             movies.TryAdd(intOfId imdbId, movie) |> ignore
-        
+
         // Set rating
-        printfn "Loading movie ratings"
+        logger.info "Loading movie ratings"
         for row in (ratingsImdb.Rows |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.Tconst))) do
             let movie = tryGet movies (intOfId <| row.Tconst)
             let rating = row.AverageRating |> float32
@@ -107,7 +108,7 @@ module MovieLoader =
             
         // Set tags
         // TODO: Filter by imdbId in ru/en
-        printfn "Loading movie tags"
+        logger.info "Loading movie tags"
         for row in (tagScores.Rows) do
             let imdbId = row.MovieId |> tryGet imdbOfMl |> Option.map (_.ImdbId)
             let movie = imdbId |> Option.map intOfId |> Option.bind (tryGet movies)
@@ -119,7 +120,7 @@ module MovieLoader =
                 movie.AddTag tag |> ignore))
             else ()
         
-        printfn "Calculating relevant actors and directors ids"
+        logger.info "Calculating relevant actors and directors ids"
         let relevantActorsIds =
             actorsDirectorsCodesCopy.Rows
             |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.Tconst))
@@ -127,13 +128,13 @@ module MovieLoader =
             |> HashSet<_>
 
         // Create people
-        printfn "Loading people"
+        logger.info "Loading people"
         for row in (actorsDirectorsNames.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId))) do
             let person = Person(row.PrimaryName)
             people.TryAdd(intOfId row.Nconst, person) |> ignore
 
         // Link people to movies
-        printfn "Linking people and movies"
+        logger.info "Linking people and movies"
         for row in actorsDirectorsCodes.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId)) do
             tryGet movies (intOfId row.Tconst) |> Option.iter (fun movie ->
             tryGet people (intOfId row.Nconst) |> Option.iter (fun person ->
