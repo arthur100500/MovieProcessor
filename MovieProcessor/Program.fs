@@ -7,6 +7,8 @@ module Program =
     [<EntryPoint>]
     let main args =
         let path = args[0]
-        let movies, crew = load path (ConsoleLogger())
-        printfn $"Loaded {movies.Count} movies and {crew.Count} people"
+        let logger = ConsoleLogger()
+        let dataset = load path logger
+        (logger :> ILogger).info "Ready"
+        CLI.run dataset
         0

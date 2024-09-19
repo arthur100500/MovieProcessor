@@ -8,6 +8,13 @@ open MovieProcessor.Movie
 
 module MovieLoader =
 
+    type Dataset =
+        { movies: IDictionary<string, Movie>
+          people: IDictionary<string, Person>
+          tags: IDictionary<string, HashSet<Movie>>
+          moviesById: IDictionary<int, Movie>
+          peopleById: IDictionary<int, Person> }
+
     let inline dictByField fieldFactory rows =
         Seq.map (fun r -> (fieldFactory r, r)) rows |> dict
 
@@ -85,6 +92,8 @@ module MovieLoader =
         let movies = Dictionary<int, Movie>()
         // NM ID to Person
         let people = Dictionary<int, Person>()
+        // Tags
+        let tags = Dictionary<string, HashSet<Movie>>()
 
         let ruEn = movieCodes.Rows |> Seq.filter (fun r -> r.Region = "RU" || r.Region = "US" || r.Region = "GB" || r.Region = "AU")
         let ruEnImdbIds = HashSet<_>([])
@@ -96,7 +105,7 @@ module MovieLoader =
         for row in ruEn do
             let imdbId = row.TitleId
             ruEnImdbIds.Add imdbId |> ignore
-            let movie = Movie(row.Title, HashSet<Tag>([]))
+            let movie = Movie(imdbId, row.Title, HashSet<Tag>([]))
             movies.TryAdd(intOfId imdbId, movie) |> ignore
 
         // Set rating
@@ -109,7 +118,7 @@ module MovieLoader =
         // Set tags
         // TODO: Filter by imdbId in ru/en
         logger.info "Loading movie tags"
-        for row in (tagScores.Rows) do
+        for row in tagScores.Rows do
             let imdbId = row.MovieId |> tryGet imdbOfMl |> Option.map (_.ImdbId)
             let movie = imdbId |> Option.map intOfId |> Option.bind (tryGet movies)
             let tag = tryGet tagCodesDict row.TagId |> Option.map (_.Tag)
@@ -117,6 +126,8 @@ module MovieLoader =
             if scoreValid then
                 movie |> Option.iter (fun movie ->
                 tag |> Option.iter (fun tag ->
+                tags.TryAdd(tag, HashSet<Movie>([])) |> ignore
+                tags[tag].Add movie |> ignore
                 movie.AddTag tag |> ignore))
             else ()
         
@@ -130,7 +141,7 @@ module MovieLoader =
         // Create people
         logger.info "Loading people"
         for row in (actorsDirectorsNames.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId))) do
-            let person = Person(row.PrimaryName)
+            let person = Person(row.Nconst, row.PrimaryName)
             people.TryAdd(intOfId row.Nconst, person) |> ignore
 
         // Link people to movies
@@ -150,4 +161,4 @@ module MovieLoader =
         let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.GetTitle(), movie) movies |> dict
         let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.GetPrimaryName(), person) people |> dict
 
-        (moviesByName, peopleByName)
+        { movies = moviesByName; people = peopleByName; tags = tags; moviesById = movies; peopleById = people}
