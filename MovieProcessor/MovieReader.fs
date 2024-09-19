@@ -3,50 +3,21 @@ open System
 open System.Collections.Generic
 open System.IO
 open FSharp.Data
+open MovieProcessor.Movie
 
 module MovieLoader =
 
-    [<Literal>]
-    let comma = ", "
-
-    type Tag = string
-
-    type Person(name) =
-        let Name: string = name
-        let movies: HashSet<Movie> = HashSet<Movie>([])
-        member _.AddMovie(movie) = movies.Add movie
-        override _.ToString() = Name
-        interface IComparable with
-            member this.CompareTo(obj : obj) = this.GetHashCode().CompareTo(obj.GetHashCode())
-
-    and Movie(name, tags) =
-        let Name : string = name
-        let Actors : HashSet<Person> = HashSet<Person>([])
-        let mutable Director : Person option = None
-        let Tags: HashSet<Tag> = tags
-        let mutable Rating: float32 = -1f
-        member _.SetDirector(director : Person) = Director <- Some director
-        member _.AddActor(actor : Person) = Actors.Add(actor)
-        member _.AddTag(tag) = Tags.Add(tag)
-        member _.GetTags() = Tags
-        member _.SetRating(rating) = Rating <- rating
-        member _.ParsedCompletely() = Name <> "" && Director.IsSome && Actors.Count > 0 && Tags.Count > 0 && Rating > -1f
-        override _.ToString() = $"{Director} - {Name} {Rating} [{String.Join(comma, Tags |> Seq.map _.ToString())}] [{String.Join(comma, Actors |> Seq.map _.ToString())}]"
-        interface IComparable with
-            member this.CompareTo(obj : obj) = this.GetHashCode().CompareTo(obj.GetHashCode())
-
-
-    let dictByField fieldFactory rows =
+    let inline dictByField fieldFactory rows =
         Seq.map (fun r -> (fieldFactory r, r)) rows |> dict
 
-    let groupByField fieldFactory rows =
+    let inline groupByField fieldFactory rows =
         let allFields = rows |> Seq.map fieldFactory |> Seq.distinct
         let result = Dictionary<_, _>()
         Seq.iter (fun f -> result.Add(f, HashSet<_>([]))) allFields
         for entry in rows do result[fieldFactory entry].Add(entry) |> ignore
         result
 
-    let tryGet (dictionary : IDictionary<_, _>) key =
+    let inline tryGet (dictionary : IDictionary<_, _>) key =
         match dictionary.TryGetValue key with
         | true, item -> Some item
         | false, _ -> None
@@ -60,7 +31,7 @@ module MovieLoader =
     type TagScoresProvider = CsvProvider<"movieId,tagId,relevance", IgnoreErrors=true, CacheRows=false>
 
     let load path =
-        let path = @"C:\Users\arthu\Desktop\ml-latest"
+        if (Path.Exists(path) |> not) then raise <| ArgumentException($"Path {path} does not exist")
 
         let actorsDirectorsCodes =
             Path.Combine [|path; "ActorsDirectorsCodes_IMDB.tsv"|]
@@ -110,9 +81,9 @@ module MovieLoader =
         let imdbOfMl = dictByField (fun (x : LinksProvider.Row) -> x.MovieId) linksImdbMovieLens.Rows
 
         // IMDB ID to Movie
-        let moviesById = Dictionary<int, Movie>()
+        let movies = Dictionary<int, Movie>()
         // NM ID to Person
-        let peopleById = Dictionary<int, Person>()
+        let people = Dictionary<int, Person>()
 
         let ruEn = movieCodes.Rows |> Seq.filter (fun r -> r.Region = "RU" || r.Region = "US" || r.Region = "GB" || r.Region = "AU")
         let ruEnImdbIds = HashSet<_>([])
@@ -125,12 +96,12 @@ module MovieLoader =
             let imdbId = row.TitleId
             ruEnImdbIds.Add imdbId |> ignore
             let movie = Movie(row.Title, HashSet<Tag>([]))
-            moviesById.TryAdd(intOfId imdbId, movie) |> ignore
+            movies.TryAdd(intOfId imdbId, movie) |> ignore
         
         // Set rating
         printfn "Loading movie ratings"
         for row in (ratingsImdb.Rows |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.Tconst))) do
-            let movie = tryGet moviesById (intOfId <| row.Tconst)
+            let movie = tryGet movies (intOfId <| row.Tconst)
             let rating = row.AverageRating |> float32
             movie |> Option.iter (_.SetRating(rating))
             
@@ -139,7 +110,7 @@ module MovieLoader =
         printfn "Loading movie tags"
         for row in (tagScores.Rows) do
             let imdbId = row.MovieId |> tryGet imdbOfMl |> Option.map (_.ImdbId)
-            let movie = imdbId |> Option.map intOfId |> Option.bind (tryGet moviesById)
+            let movie = imdbId |> Option.map intOfId |> Option.bind (tryGet movies)
             let tag = tryGet tagCodesDict row.TagId |> Option.map (_.Tag)
             let scoreValid = (float32 row.Relevance) > 0.5f
             if scoreValid then
@@ -159,13 +130,13 @@ module MovieLoader =
         printfn "Loading people"
         for row in (actorsDirectorsNames.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId))) do
             let person = Person(row.PrimaryName)
-            peopleById.TryAdd(intOfId row.Nconst, person) |> ignore
+            people.TryAdd(intOfId row.Nconst, person) |> ignore
 
         // Link people to movies
         printfn "Linking people and movies"
         for row in actorsDirectorsCodes.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId)) do
-            tryGet moviesById (intOfId row.Tconst) |> Option.iter (fun movie ->
-            tryGet peopleById (intOfId row.Nconst) |> Option.iter (fun person ->
+            tryGet movies (intOfId row.Tconst) |> Option.iter (fun movie ->
+            tryGet people (intOfId row.Nconst) |> Option.iter (fun person ->
             match row.Category with
             | "actor" | "actress" | "self" ->
                 movie.AddActor person |> ignore
@@ -175,5 +146,7 @@ module MovieLoader =
                 person.AddMovie movie |> ignore
             | _ -> ()))
 
-        Seq.iter (fun (f : KeyValuePair<_,Movie>) -> if f.Value.ParsedCompletely() then printfn $"{f.Value.ToString()}" else ()) moviesById
-        []
+        let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.GetTitle(), movie) movies |> dict
+        let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.GetPrimaryName(), person) people |> dict
+
+        (moviesByName, peopleByName)
