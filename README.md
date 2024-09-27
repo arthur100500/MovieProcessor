@@ -8,8 +8,6 @@ Run time is avarage between 3 runs
 | № | Commit  | Run time | Increase | Description   |
 |---|---------|----------|----------|---------------|
 | 1 | 22bb500 | 1m 41s   | -        | Initial build |
-|   |         |          |          |               |
-|   |         |          |          |               |
 
 ### Improvement and implementation details
 
