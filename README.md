@@ -10,3 +10,7 @@ Run time is avarage between 3 runs
 | 1 | 22bb500 | 1m 41s   | -        | Initial build |
 |   |         |          |          |               |
 |   |         |          |          |               |
+
+### Improvement and implementation details
+
+Build 1: Used F# and CsvProvider types to parse files, looped through all the lines and stored data in 3 objects of type Dictionary<T>. String are splitted by CsvProvider. Only one thread was used.
