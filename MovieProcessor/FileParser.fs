@@ -10,7 +10,7 @@ module FileParser =
     type tagCodesRow = {tagId: int; tag: string}
     
     [<Struct>]
-    type actorsDirectorsRow = {tconst: int; nconst: int; category: string}
+    type actorsDirectorsRow = {tconst: int; nconst: int; category: char}
     
     [<Struct>]
     type actorsDirectorsNamesRow = {nconst: int; primaryName: string}
@@ -37,29 +37,32 @@ module FileParser =
     // "tconst	ordering	nconst	category	job	characters"
     // -> tconst, nconst, category
     let splitActorsDirectors (line : string) =
-        let [|tconst; _; nconst; category; _; _|] = line.Split("\t")
-        {tconst=tconst.Substring(2, 7) |> Int32.Parse
-         nconst=nconst.Substring(2, 7) |> Int32.Parse
-         category=category}
+        let secondSeparatorPlacement = line.IndexOf('\009', 10)
+        let thirdSeparatorPlacement = line.IndexOf('\009', secondSeparatorPlacement + 9)
+        let tconst = line.Substring(2, 7)
+        let nconst = line.Substring(secondSeparatorPlacement + 3, 7)
+        {tconst=tconst |> Int32.Parse
+         nconst=nconst |> Int32.Parse
+         category=line[thirdSeparatorPlacement + 1]}
 
     // "nconst	primaryName	birthYear	deathYear	primaryProfession	knownForTitles"
     // -> nconst, primaryName
     let splitActorsDirectorsNames (line : string) =
-        let [|nconst; primaryName; _; _; _; _|] = line.Split("\t")
-        {nconst=nconst.Substring(2, 7) |> Int32.Parse
-         primaryName=primaryName}
+        let secondSeparatorPlacement = line.IndexOf('\009', 12)
+        {nconst=line.Substring(2, 7) |> Int32.Parse
+         primaryName=line.Substring(10, secondSeparatorPlacement - 10)}
 
     // "tconst	averageRating	numVotes"
     // -> tconst, averageRating
     let splitRatings (line : string) =
-        let [|tconst; averageRating; _|] = line.Split("\t")
+        let [|tconst; averageRating; _|] = line.Split('\009')
         {tconst=tconst.Substring(2, 7) |> Int32.Parse
          averageRating=averageRating |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
         
     // "movieId,imdbId,tmdbId"
     // -> movieId, imdbId
     let splitLinks (line : string) =
-        let [|movieId; imdbId; _|] = line.Split(",")
+        let [|movieId; imdbId; _|] = line.Split(',')
         {movieId=movieId |> Int32.Parse
          imdbId=imdbId |> Int32.Parse}
         
@@ -74,10 +77,11 @@ module FileParser =
     // "movieId,tagId,relevance"
     // -> movieId, tagId, relevance
     let splitTagScores (line : string) =
-        let [|movieId; tagId; relevance|] = line.Split(",")
-        {movieId=movieId |> Int32.Parse
-         tagId=tagId |> Int32.Parse
-         relevance=relevance |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
+        let firstSplit = line.IndexOf(',', 1)
+        let secondSplit = line.IndexOf(',', firstSplit + 1)
+        {movieId=line.Substring(0, firstSplit) |> Int32.Parse
+         tagId=line.Substring(firstSplit + 1, secondSplit - firstSplit - 1)  |> Int32.Parse
+         relevance=line.Substring(secondSplit + 1, line.Length - secondSplit - 1) |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
     
     let fileIter parse (path: string) f =
         let fileReadStream = File.OpenRead path

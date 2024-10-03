@@ -131,10 +131,10 @@ module MovieLoader =
             tryGet movies row.tconst |> Option.iter (fun movie ->
             tryGet people row.nconst |> Option.iter (fun person ->
             match row.category with
-            | "actor" | "actress" | "self" ->
+            | 'a' | 's' ->
                 movie.AddActor person |> ignore
                 person.AddMovie movie |> ignore
-            | "director" ->
+            | 'd' ->
                 movie.AddDirector person |> ignore
                 person.AddMovie movie |> ignore
             | _ -> ())))
