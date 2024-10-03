@@ -1,5 +1,6 @@
 ﻿namespace MovieProcessor
 
+open System.Globalization
 open System.IO
 open System
 
@@ -32,7 +33,7 @@ module FileParser =
     // -> tagId, tag
     let splitTagCodes (line : string) =
         let [|tagId; tag|] = line.Split(",")
-        {tagId=tagId.Substring(2, 7) |> Int32.Parse; tag=tag}
+        {tagId=tagId |> Int32.Parse; tag=tag}
         
     // "tconst	ordering	nconst	category	job	characters"
     // -> tconst, nconst, category
@@ -54,14 +55,14 @@ module FileParser =
     let splitRatings (line : string) =
         let [|tconst; averageRating; _|] = line.Split("\t")
         {tconst=tconst.Substring(2, 7) |> Int32.Parse
-         averageRating=averageRating|> Single.Parse}
+         averageRating=averageRating |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
         
     // "movieId,imdbId,tmdbId"
     // -> movieId, imdbId
     let splitLinks (line : string) =
         let [|movieId; imdbId; _|] = line.Split(",")
-        {movieId=movieId.Substring(2, 7) |> Int32.Parse
-         imdbId=imdbId.Substring(2, 7) |> Int32.Parse}
+        {movieId=movieId |> Int32.Parse
+         imdbId=imdbId |> Int32.Parse}
         
     // "titleId	ordering	title	region	language	types	attributes	isOriginalTitle"
     // -> titleId, title, region
@@ -76,16 +77,30 @@ module FileParser =
     let splitTagScores (line : string) =
         let [|movieId; tagId; relevance|] = line.Split(",")
         {movieId=movieId |> Int32.Parse
-         tagId=tagId.Substring(2, 7) |> Int32.Parse
-         relevance = relevance |> Single.Parse }
+         tagId=tagId |> Int32.Parse
+         relevance = relevance |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
     
     let fileIter parse (path: string) f =
         let fileReadStream = File.OpenRead path
         use reader = new StreamReader(fileReadStream)
+        reader.ReadLine() |> ignore
         let rec inline inner () = 
             let line = reader.ReadLine()
             match line with
             | null -> ()
             | data -> data |> parse |> f
         inner ()
-    
+
+    let rec fileMap parse (path: string) =
+        let fileReadStream = File.OpenRead path
+        let reader = new StreamReader(fileReadStream)
+        reader.ReadLine() |> ignore
+        let rec inner () = seq {
+            let line = reader.ReadLine()
+            match line with
+            | null -> ()
+            | data ->
+                yield data |> parse
+                yield! inner ()
+        }
+        inner ()

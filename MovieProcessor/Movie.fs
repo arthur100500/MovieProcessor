@@ -10,7 +10,7 @@ module Movie =
     type Tag = string
 
     type Person(id, name) =
-        let Id : string = id
+        let Id : int = id
         let PrimaryName: string = name
         let movies: HashSet<Movie> = HashSet<Movie>([])
         member _.AddMovie(movie) = movies.Add movie
@@ -22,7 +22,7 @@ module Movie =
             member this.CompareTo(obj : obj) = this.GetHashCode().CompareTo(obj.GetHashCode())
 
     and Movie(id, name, tags) =
-        let Id : string = id
+        let Id : int = id
         let Title : string = name
         let Actors : HashSet<Person> = HashSet<Person>([])
         let Directors : HashSet<Person> = HashSet<Person>([])

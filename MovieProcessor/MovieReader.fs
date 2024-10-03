@@ -17,7 +17,9 @@ module MovieLoader =
           peopleById: IDictionary<int, Person> }
 
     let inline dictByField fieldFactory collectionIter =
-        collectionIter (fun r -> (fieldFactory r, r)) |> dict
+        let dictionary = Dictionary<_, _>()
+        collectionIter (fun r -> dictionary.Add(fieldFactory r, r))
+        dictionary
 
     let inline groupByField fieldFactory collectionIter =
         let allFields = collectionIter fieldFactory |> Seq.distinct
@@ -45,7 +47,7 @@ module MovieLoader =
             
         let actorsDirectorsCodesCopy =
             Path.Combine [|path; "ActorsDirectorsCodes_IMDB.tsv"|]
-            |> FileParser.fileIter splitActorsDirectors
+            |> FileParser.fileMap splitActorsDirectors
             
         let ratingsImdb =
             Path.Combine [|path; "Ratings_IMDB.tsv"|]
@@ -57,7 +59,7 @@ module MovieLoader =
             
         let movieCodes =
             Path.Combine [|path; "MovieCodes_IMDB.tsv"|]
-            |> FileParser.fileIter splitMovieCodes
+            |> FileParser.fileMap splitMovieCodes
             
         let tagCodes =
             Path.Combine [|path; "TagCodes_MovieLens.csv"|]
@@ -81,7 +83,7 @@ module MovieLoader =
         // Tags
         let tags = Dictionary<string, HashSet<Movie>>()
 
-        let ruEn = movieCodes.Rows |> Seq.filter (fun r -> r.Region = "RU" || r.Region = "US" || r.Region = "GB" || r.Region = "AU")
+        let ruEn = movieCodes |> Seq.filter (fun r -> r.region = "RU" || r.region = "US" || r.region = "GB" || r.region = "AU")
         let ruEnImdbIds = HashSet<_>([])
         
         let intOfId = fun (t : string) -> t.Substring(2) |> int
@@ -89,60 +91,60 @@ module MovieLoader =
         // Create movie with empty tags and no rating
         logger.info "Loading movies"
         for row in ruEn do
-            let imdbId = row.TitleId
+            let imdbId = row.titleId
             ruEnImdbIds.Add imdbId |> ignore
-            let movie = Movie(imdbId, row.Title, HashSet<Tag>([]))
-            movies.TryAdd(intOfId imdbId, movie) |> ignore
+            let movie = Movie(imdbId, row.title, HashSet<Tag>([]))
+            movies.TryAdd(imdbId, movie) |> ignore
 
         // Set rating
         logger.info "Loading movie ratings"
-        for row in (ratingsImdb.Rows |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.Tconst))) do
-            let movie = tryGet movies (intOfId <| row.Tconst)
-            let rating = row.AverageRating |> float32
-            movie |> Option.iter (_.SetRating(rating))
+        ratingsImdb (fun row ->
+            let movie = tryGet movies row.tconst
+            let rating = row.averageRating |> float32
+            movie |> Option.iter (_.SetRating(rating)))
             
         // Set tags
         // TODO: Filter by imdbId in ru/en
         logger.info "Loading movie tags"
-        for row in tagScores.Rows do
-            let imdbId = row.MovieId |> tryGet imdbOfMl |> Option.map (_.ImdbId)
-            let movie = imdbId |> Option.map intOfId |> Option.bind (tryGet movies)
-            let tag = tryGet tagCodesDict row.TagId |> Option.map (_.Tag)
-            let scoreValid = (float32 row.Relevance) > 0.5f
+        tagScores (fun row ->
+            let imdbId = row.movieId |> tryGet imdbOfMl |> Option.map (_.imdbId)
+            let movie = imdbId |> Option.bind (tryGet movies)
+            let tag = tryGet tagCodesDict row.tagId |> Option.map (_.tag)
+            let scoreValid = (float32 row.relevance) > 0.5f
             if scoreValid then
                 movie |> Option.iter (fun movie ->
                 tag |> Option.iter (fun tag ->
                 tags.TryAdd(tag, HashSet<Movie>([])) |> ignore
                 tags[tag].Add movie |> ignore
                 movie.AddTag tag |> ignore))
-            else ()
+            else ())
         
         logger.info "Calculating relevant actors and directors ids"
         let relevantActorsIds =
-            actorsDirectorsCodesCopy.Rows
-            |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.Tconst))
-            |> Seq.map (fun t -> t.Nconst |> intOfId)
+            actorsDirectorsCodesCopy
+            |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.tconst))
+            |> Seq.map (_.nconst)
             |> HashSet<_>
 
         // Create people
         logger.info "Loading people"
-        for row in (actorsDirectorsNames.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId))) do
-            let person = Person(row.Nconst, row.PrimaryName)
-            people.TryAdd(intOfId row.Nconst, person) |> ignore
+        actorsDirectorsNames (fun row ->
+            let person = Person(row.nconst, row.primaryName)
+            people.TryAdd(row.nconst, person) |> ignore)
 
         // Link people to movies
         logger.info "Linking people and movies"
-        for row in actorsDirectorsCodes.Rows |> Seq.filter (fun r -> relevantActorsIds.Contains(r.Nconst |> intOfId)) do
-            tryGet movies (intOfId row.Tconst) |> Option.iter (fun movie ->
-            tryGet people (intOfId row.Nconst) |> Option.iter (fun person ->
-            match row.Category with
+        actorsDirectorsCodes (fun row ->
+            tryGet movies row.tconst |> Option.iter (fun movie ->
+            tryGet people row.nconst |> Option.iter (fun person ->
+            match row.category with
             | "actor" | "actress" | "self" ->
                 movie.AddActor person |> ignore
                 person.AddMovie movie |> ignore
             | "director" ->
                 movie.AddDirector person |> ignore
                 person.AddMovie movie |> ignore
-            | _ -> ()))
+            | _ -> ())))
 
         let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.GetTitle(), movie) movies |> dict
         let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.GetPrimaryName(), person) people |> dict
