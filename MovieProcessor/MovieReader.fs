@@ -85,9 +85,7 @@ module MovieLoader =
 
         let ruEn = movieCodes |> Seq.filter (fun r -> r.region = "RU" || r.region = "US" || r.region = "GB" || r.region = "AU")
         let ruEnImdbIds = HashSet<_>([])
-        
-        let intOfId = fun (t : string) -> t.Substring(2) |> int
-        
+
         // Create movie with empty tags and no rating
         logger.info "Loading movies"
         for row in ruEn do
@@ -120,11 +118,6 @@ module MovieLoader =
             else ())
         
         logger.info "Calculating relevant actors and directors ids"
-        let relevantActorsIds =
-            actorsDirectorsCodesCopy
-            |> Seq.filter (fun x -> ruEnImdbIds.Contains(x.tconst))
-            |> Seq.map (_.nconst)
-            |> HashSet<_>
 
         // Create people
         logger.info "Loading people"

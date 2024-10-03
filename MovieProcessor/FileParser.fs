@@ -27,8 +27,7 @@ module FileParser =
     [<Struct>]
     type tagScoresRow = {movieId: int; tagId: int; relevance: float32; }
     
-    
-    
+
     // "tagId,tag"
     // -> tagId, tag
     let splitTagCodes (line : string) =
@@ -78,17 +77,19 @@ module FileParser =
         let [|movieId; tagId; relevance|] = line.Split(",")
         {movieId=movieId |> Int32.Parse
          tagId=tagId |> Int32.Parse
-         relevance = relevance |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
+         relevance=relevance |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
     
     let fileIter parse (path: string) f =
         let fileReadStream = File.OpenRead path
         use reader = new StreamReader(fileReadStream)
         reader.ReadLine() |> ignore
-        let rec inline inner () = 
+        let rec inner () =
             let line = reader.ReadLine()
             match line with
             | null -> ()
-            | data -> data |> parse |> f
+            | data ->
+                data |> parse |> f
+                inner ()
         inner ()
 
     let rec fileMap parse (path: string) =
