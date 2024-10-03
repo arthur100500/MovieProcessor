@@ -3,6 +3,7 @@ open System
 open System.Collections.Generic
 open System.IO
 open FSharp.Data
+open MovieProcessor.FileParser
 open MovieProcessor.Logger
 open MovieProcessor.Movie
 
@@ -15,14 +16,14 @@ module MovieLoader =
           moviesById: IDictionary<int, Movie>
           peopleById: IDictionary<int, Person> }
 
-    let inline dictByField fieldFactory rows =
-        Seq.map (fun r -> (fieldFactory r, r)) rows |> dict
+    let inline dictByField fieldFactory collectionIter =
+        collectionIter (fun r -> (fieldFactory r, r)) |> dict
 
-    let inline groupByField fieldFactory rows =
-        let allFields = rows |> Seq.map fieldFactory |> Seq.distinct
+    let inline groupByField fieldFactory collectionIter =
+        let allFields = collectionIter fieldFactory |> Seq.distinct
         let result = Dictionary<_, _>()
         Seq.iter (fun f -> result.Add(f, HashSet<_>([]))) allFields
-        for entry in rows do result[fieldFactory entry].Add(entry) |> ignore
+        collectionIter (fun entry -> result[fieldFactory entry].Add(entry)) |> ignore
         result
 
     let inline tryGet (dictionary : IDictionary<_, _>) key =
@@ -30,63 +31,48 @@ module MovieLoader =
         | true, item -> Some item
         | false, _ -> None
 
-    type TagCodesProvider = CsvProvider<"tagId,tag", IgnoreErrors=true, CacheRows=false>
-    type ActorsDirectorsProvider = CsvProvider<"tconst	ordering	nconst	category	job	characters", IgnoreErrors=true, CacheRows=false>
-    type ActorsDirectorsNamesProvider= CsvProvider<"nconst	primaryName	birthYear	deathYear	primaryProfession	knownForTitles", IgnoreErrors=true, CacheRows=false>
-    type RatingsProvider = CsvProvider<"tconst	averageRating	numVotes", IgnoreErrors=true, CacheRows=false>
-    type LinksProvider = CsvProvider<"movieId,imdbId,tmdbId", IgnoreErrors=true, CacheRows=false>
-    type MovieCodesProvider = CsvProvider<"titleId	ordering	title	region	language	types	attributes	isOriginalTitle", IgnoreErrors=true, CacheRows=false>
-    type TagScoresProvider = CsvProvider<"movieId,tagId,relevance", IgnoreErrors=true, CacheRows=false>
 
     let load (path : string) (logger : ILogger) =
         if (Path.Exists(path) |> not) then raise <| ArgumentException($"Path {path} does not exist")
 
         let actorsDirectorsCodes =
             Path.Combine [|path; "ActorsDirectorsCodes_IMDB.tsv"|]
-            |> File.OpenRead
-            |> ActorsDirectorsProvider.Load
+            |> FileParser.fileIter splitActorsDirectors
 
         let actorsDirectorsNames =
             Path.Combine [|path; "ActorsDirectorsNames_IMDB.txt"|]
-            |> File.OpenRead
-            |> ActorsDirectorsNamesProvider.Load
+            |> FileParser.fileIter splitActorsDirectorsNames
             
         let actorsDirectorsCodesCopy =
             Path.Combine [|path; "ActorsDirectorsCodes_IMDB.tsv"|]
-            |> File.OpenRead
-            |> ActorsDirectorsProvider.Load
+            |> FileParser.fileIter splitActorsDirectors
             
         let ratingsImdb =
             Path.Combine [|path; "Ratings_IMDB.tsv"|]
-            |> File.OpenRead
-            |> RatingsProvider.Load
+            |> FileParser.fileIter splitRatings
             
         let linksImdbMovieLens =
             Path.Combine [|path; "links_IMDB_MovieLens.csv"|]
-            |> File.OpenRead
-            |> LinksProvider.Load
+            |> FileParser.fileIter splitLinks
             
         let movieCodes =
             Path.Combine [|path; "MovieCodes_IMDB.tsv"|]
-            |> File.OpenRead
-            |> MovieCodesProvider.Load
+            |> FileParser.fileIter splitMovieCodes
             
         let tagCodes =
             Path.Combine [|path; "TagCodes_MovieLens.csv"|]
-            |> File.OpenRead
-            |> TagCodesProvider.Load
+            |> FileParser.fileIter splitTagCodes
             
         let tagScores =
             Path.Combine [|path; "TagScores_MovieLens.csv"|]
-            |> File.OpenRead
-            |> TagScoresProvider.Load
+            |> FileParser.fileIter splitTagScores
             
         // Dictionaries for fast loading
         logger.info "Organizing data into dictionaries"
         logger.info "Tag Codes"
-        let tagCodesDict = dictByField (fun (x : TagCodesProvider.Row) -> x.TagId) tagCodes.Rows
+        let tagCodesDict = dictByField (fun (x : tagCodesRow) -> x.tagId) tagCodes
         logger.info "Movie ID Links"
-        let imdbOfMl = dictByField (fun (x : LinksProvider.Row) -> x.MovieId) linksImdbMovieLens.Rows
+        let imdbOfMl = dictByField (fun (x : linksRow) -> x.movieId) linksImdbMovieLens
 
         // IMDB ID to Movie
         let movies = Dictionary<int, Movie>()
@@ -154,7 +140,7 @@ module MovieLoader =
                 movie.AddActor person |> ignore
                 person.AddMovie movie |> ignore
             | "director" ->
-                movie.SetDirector person
+                movie.AddDirector person |> ignore
                 person.AddMovie movie |> ignore
             | _ -> ()))
 

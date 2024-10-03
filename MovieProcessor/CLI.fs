@@ -110,4 +110,5 @@ Warning: all commands are case-sensitive
         | ["people"; page] -> printPeoplePage page data
         | "person" :: id -> printPerson (String.Join(" ", id)) data
         | _ -> printfn $"%s{helpMessage}"
+        printfn ""
         run data
