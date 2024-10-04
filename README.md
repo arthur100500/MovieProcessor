@@ -5,10 +5,11 @@ Homework for .NET course, by Alekseev Artur.
 Every run was done with Release build and on my laptop (i will not share details). <br>
 Run time is avarage between 3 runs
 
-| № | Commit  | Run time | Increase | Description                                   |
-|---|---------|----------|----------|-----------------------------------------------|
-| 1 | 22bb500 | 1m 41s   | -        | Initial build                                 |
-| 2 | 17c690a | 1m 05s   | -        | Replaced CSVProvider by custom implementation |
+| № | Commit  | Run time | Increase | Description                                     |
+|---|---------|---------:|----------|-------------------------------------------------|
+| 1 | 22bb500 |   1m 41s | -        | Initial build                                   |
+| 2 | 17c690a |   1m 05s | -        | Replaced CSVProvider by custom implementation   |
+| 3 | 168ffb9 |      45s | -        | Replaced Split() to Substring in critical parts |
 
 ### Improvement and implementation details
 
@@ -41,3 +42,4 @@ let splitLinks (line : string) =
     {movieId=movieId |> Int32.Parse
      imdbId=imdbId |> Int32.Parse}
 ```
+**Build 3:** Replaced string.Split() with string.Subsctring and indexOf in critical parts (while parsing top 3 biggest files)
