@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="ConcurrentHashSet.fs" />
         <Compile Include="Logger.fs" />
         <Compile Include="Movie.fs" />
         <Compile Include="FileParser.fs" />

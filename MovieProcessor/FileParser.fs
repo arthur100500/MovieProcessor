@@ -3,6 +3,8 @@
 open System.Globalization
 open System.IO
 open System
+open System.Threading
+open System.Threading.Tasks
 
 module FileParser =
     // Row Definitions
@@ -82,7 +84,9 @@ module FileParser =
         {movieId=line.Substring(0, firstSplit) |> Int32.Parse
          tagId=line.Substring(firstSplit + 1, secondSplit - firstSplit - 1)  |> Int32.Parse
          relevance=line.Substring(secondSplit + 1, line.Length - secondSplit - 1) |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
-    
+
+    let mutable queuedProcessesCount = 0
+
     let fileIter parse (path: string) f =
         let fileReadStream = File.OpenRead path
         use reader = new StreamReader(fileReadStream)
@@ -92,9 +96,20 @@ module FileParser =
             match line with
             | null -> ()
             | data ->
-                data |> parse |> f
+                Task.Run(fun () ->
+                    Interlocked.Increment(&queuedProcessesCount) |> ignore
+                    try
+                        data |> parse |> f |> ignore
+                    finally
+                        Interlocked.Decrement(&queuedProcessesCount) |> ignore
+                ) |> ignore
                 inner ()
         inner ()
+
+    let rec waitForAllTasks () =
+        while queuedProcessesCount <> 0 do
+            printfn "%d" queuedProcessesCount
+            Thread.Yield() |> ignore
 
     let rec fileMap parse (path: string) =
         let fileReadStream = File.OpenRead path

@@ -33,16 +33,16 @@ Warning: all commands are case-sensitive
     let stringOfTags (tags: Tag seq) =
         String.Join(", ", tags)
 
-    let printTags (tagsOrdered : KeyValuePair<string, HashSet<Movie>> array) (separator: string) (start : int)=
-        let mapped = Seq.mapi (fun i -> fun (item : KeyValuePair<string, HashSet<Movie>>) -> $"{start + i} - {item.Key} ({item.Value.Count})") tagsOrdered
+    let printTags (tagsOrdered : KeyValuePair<string, ConcurrentHashSet<Movie>> array) (separator: string) (start : int)=
+        let mapped = Seq.mapi (fun i -> fun (item : KeyValuePair<string, ConcurrentHashSet<Movie>>) -> $"{start + i} - {item.Key} ({item.Value.Count})") tagsOrdered
         String.Join(separator, mapped) |> printfn "%s"
 
-    let printTag (identifier : string) (tagsOrdered : KeyValuePair<string, HashSet<Movie>> array) (tagsDict : IDictionary<_,HashSet<Movie>>) =
+    let printTag (identifier : string) (tagsOrdered : KeyValuePair<string, ConcurrentHashSet<Movie>> array) (tagsDict : IDictionary<_,ConcurrentHashSet<Movie>>) =
         let isInt, value = identifier |> Int32.TryParse
         let result = if isInt then Array.tryItem value tagsOrdered else None
         let result = if result.IsNone then tryGet tagsDict identifier |> Option.map (fun r -> KeyValuePair(identifier, r)) else result
         match result with
-        | Some tag -> printfn $"Movies for {tag.Key}: {stringOfMovieNames tag.Value comma}"
+        | Some tag -> printfn $"Movies for {tag.Key}: {stringOfMovieNames tag.Value.Dict.Keys comma}"
         | None -> printfn $"Found no tags with name or id being \"{identifier}\""
 
     let printMovie (identifier : string) (dataset : Dataset) =
@@ -53,8 +53,8 @@ Warning: all commands are case-sensitive
         | Some movie ->
             printfn $"Title - {movie.GetTitle()}"
             printfn $"Director - {movie.GetDirector()}"
-            printfn $"Cast - [{stringOfPeople (movie.GetActors()) comma}]"
-            printfn $"Tags - [{stringOfTags (movie.GetTags())}]"
+            printfn $"Cast - [{stringOfPeople (movie.GetActors().Dict.Keys) comma}]"
+            printfn $"Tags - [{stringOfTags (movie.GetTags().Dict.Keys)}]"
             printfn $"Rating - {movie.GetRating()}"
         | None -> printfn $"Found no movie with name or id being \"{identifier}\""
 
@@ -65,7 +65,7 @@ Warning: all commands are case-sensitive
         match result with
         | Some person ->
             printfn $"Name - {person.GetPrimaryName()}"
-            printfn $"Movies - [{stringOfMovieNames (person.GetMovies()) comma}]"
+            printfn $"Movies - [{stringOfMovieNames (person.GetMovies().Dict.Keys) comma}]"
         | None -> printfn $"Found no movie with name or id being \"{identifier}\""
 
     let printMoviePage (page : string) (dataset : Dataset) =
@@ -86,7 +86,7 @@ Warning: all commands are case-sensitive
             printfn "%s" (stringOfPeople page "\n")
         | false -> printfn $"Provided page is not valid! (Not an integer or bigger than {dataset.people.Count / pageSize})"
 
-    let printTagPage (page : string) (tagsOrdered : KeyValuePair<string, HashSet<Movie>> array) =
+    let printTagPage (page : string) (tagsOrdered : KeyValuePair<string, ConcurrentHashSet<Movie>> array) =
         let maxPage = float32 tagsOrdered.Length / (float32 pageSize) |> ceil |> int
         let isInt, value = page |> Int32.TryParse
         match isInt && value < maxPage && value > -1 with

@@ -1,5 +1,6 @@
 ﻿namespace MovieProcessor
 open System
+open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
 open FSharp.Data
@@ -12,19 +13,19 @@ module MovieLoader =
     type Dataset =
         { movies: IDictionary<string, Movie>
           people: IDictionary<string, Person>
-          tags: IDictionary<string, HashSet<Movie>>
+          tags: IDictionary<string, ConcurrentHashSet<Movie>>
           moviesById: IDictionary<int, Movie>
           peopleById: IDictionary<int, Person> }
 
     let inline dictByField fieldFactory collectionIter =
-        let dictionary = Dictionary<_, _>()
-        collectionIter (fun r -> dictionary.Add(fieldFactory r, r))
+        let dictionary = ConcurrentDictionary<_, _>()
+        collectionIter (fun r -> dictionary.TryAdd(fieldFactory r, r) |> ignore)
         dictionary
 
     let inline groupByField fieldFactory collectionIter =
         let allFields = collectionIter fieldFactory |> Seq.distinct
-        let result = Dictionary<_, _>()
-        Seq.iter (fun f -> result.Add(f, HashSet<_>([]))) allFields
+        let result = ConcurrentDictionary<_, _>()
+        Seq.iter (fun f -> result.TryAdd(f, ConcurrentHashSet<_>()) |> ignore) allFields
         collectionIter (fun entry -> result[fieldFactory entry].Add(entry)) |> ignore
         result
 
@@ -77,21 +78,21 @@ module MovieLoader =
         let imdbOfMl = dictByField (fun (x : linksRow) -> x.movieId) linksImdbMovieLens
 
         // IMDB ID to Movie
-        let movies = Dictionary<int, Movie>()
+        let movies = ConcurrentDictionary<int, Movie>(Environment.ProcessorCount, 980000)
         // NM ID to Person
-        let people = Dictionary<int, Person>()
+        let people = ConcurrentDictionary<int, Person>(Environment.ProcessorCount, 1500000)
         // Tags
-        let tags = Dictionary<string, HashSet<Movie>>()
+        let tags = ConcurrentDictionary<string, ConcurrentHashSet<Movie>>(Environment.ProcessorCount, 2000)
 
         let ruEn = movieCodes |> Seq.filter (fun r -> r.region = "RU" || r.region = "US" || r.region = "GB" || r.region = "AU")
-        let ruEnImdbIds = HashSet<_>([])
+        let ruEnImdbIds = ConcurrentHashSet<_>()
 
         // Create movie with empty tags and no rating
         logger.info "Loading movies"
         for row in ruEn do
             let imdbId = row.titleId
             ruEnImdbIds.Add imdbId |> ignore
-            let movie = Movie(imdbId, row.title, HashSet<Tag>([]))
+            let movie = Movie(imdbId, row.title, ConcurrentHashSet<Tag>())
             movies.TryAdd(imdbId, movie) |> ignore
 
         // Set rating
@@ -112,7 +113,7 @@ module MovieLoader =
             if scoreValid then
                 movie |> Option.iter (fun movie ->
                 tag |> Option.iter (fun tag ->
-                tags.TryAdd(tag, HashSet<Movie>([])) |> ignore
+                tags.TryAdd(tag, ConcurrentHashSet<Movie>()) |> ignore
                 tags[tag].Add movie |> ignore
                 movie.AddTag tag |> ignore))
             else ())
@@ -141,5 +142,7 @@ module MovieLoader =
 
         let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.GetTitle(), movie) movies |> dict
         let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.GetPrimaryName(), person) people |> dict
+
+        waitForAllTasks()
 
         { movies = moviesByName; people = peopleByName; tags = tags; moviesById = movies; peopleById = people}
