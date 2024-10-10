@@ -39,20 +39,22 @@ module FileParser =
     // "tconst	ordering	nconst	category	job	characters"
     // -> tconst, nconst, category
     let splitActorsDirectors (line : string) =
-        let secondSeparatorPlacement = line.IndexOf('\009', 10)
-        let thirdSeparatorPlacement = line.IndexOf('\009', secondSeparatorPlacement + 9)
-        let tconst = line.Substring(2, 7)
-        let nconst = line.Substring(secondSeparatorPlacement + 3, 7)
-        {tconst=tconst |> Int32.Parse
-         nconst=nconst |> Int32.Parse
+        let line = line.AsSpan()
+        let secondSeparatorPlacement = line.Slice(10).IndexOf('\009') + 10
+        let thirdSeparatorPlacement = line.Slice(secondSeparatorPlacement + 9).IndexOf('\009') + secondSeparatorPlacement + 9
+        let tconst = line.Slice(2, 7)
+        let nconst = line.Slice(secondSeparatorPlacement + 3, 7)
+        {tconst=Int32.Parse(tconst)
+         nconst=Int32.Parse(nconst)
          category=line[thirdSeparatorPlacement + 1]}
 
     // "nconst	primaryName	birthYear	deathYear	primaryProfession	knownForTitles"
     // -> nconst, primaryName
     let splitActorsDirectorsNames (line : string) =
-        let secondSeparatorPlacement = line.IndexOf('\009', 12)
-        {nconst=line.Substring(2, 7) |> Int32.Parse
-         primaryName=line.Substring(10, secondSeparatorPlacement - 10)}
+        let line = line.AsSpan()
+        let secondSeparatorPlacement = line.Slice(12).IndexOf('\009') + 12
+        {nconst=Int32.Parse(line.Slice(2, 7))
+         primaryName=line.Slice(10, secondSeparatorPlacement - 10).ToString()}
 
     // "tconst	averageRating	numVotes"
     // -> tconst, averageRating
@@ -79,11 +81,12 @@ module FileParser =
     // "movieId,tagId,relevance"
     // -> movieId, tagId, relevance
     let splitTagScores (line : string) =
-        let firstSplit = line.IndexOf(',', 1)
-        let secondSplit = line.IndexOf(',', firstSplit + 1)
-        {movieId=line.Substring(0, firstSplit) |> Int32.Parse
-         tagId=line.Substring(firstSplit + 1, secondSplit - firstSplit - 1)  |> Int32.Parse
-         relevance=line.Substring(secondSplit + 1, line.Length - secondSplit - 1) |> fun x -> Single.Parse(x, CultureInfo.InvariantCulture)}
+        let line = line.AsSpan()
+        let firstSplit = line.Slice(1).IndexOf(',') + 1
+        let secondSplit = line.Slice(firstSplit + 1).IndexOf(',') + firstSplit + 1
+        {movieId=Int32.Parse(line.Slice(0, firstSplit))
+         tagId=Int32.Parse(line.Slice(firstSplit + 1, secondSplit - firstSplit - 1))
+         relevance=Single.Parse(line.Slice(secondSplit + 1, line.Length - secondSplit - 1), CultureInfo.InvariantCulture)}
 
     let mutable queuedProcessesCount = 0
 
@@ -96,13 +99,7 @@ module FileParser =
             match line with
             | null -> ()
             | data ->
-                Task.Run(fun () ->
-                    Interlocked.Increment(&queuedProcessesCount) |> ignore
-                    try
-                        data |> parse |> f |> ignore
-                    finally
-                        Interlocked.Decrement(&queuedProcessesCount) |> ignore
-                ) |> ignore
+                data |> parse |> f |> ignore
                 inner ()
         inner ()
 
