@@ -5,12 +5,13 @@ Homework for .NET course, by Alekseev Artur.
 Every run was done with Release build and on my laptop (i will not share details). <br>
 Run time is avarage between 3 runs
 
-| № | Commit  | Run time | Increase | Description                                     |
-|---|---------|---------:|----------|-------------------------------------------------|
-| 1 | 22bb500 |   1m 41s | -        | Initial build                                   |
-| 2 | 17c690a |   1m 05s | -        | Replaced CSVProvider by custom implementation   |
-| 3 | 168ffb9 |      45s | -        | Replaced Split() to Substring in critical parts |
-| 4 | 17cb41d |   1m 12s | -        | Add blocking collections                        |
+| № | Commit  | Run time | Increase | Description                                       |
+|---|---------|---------:|----------|---------------------------------------------------|
+| 1 | 22bb500 |   1m 41s | -        | Initial build                                     |
+| 2 | 17c690a |   1m 05s | -        | Replaced CSVProvider by custom implementation     |
+| 3 | 168ffb9 |      45s | -        | Replaced Split() to Substring in critical parts   |
+| 4 | 17cb41d |   1m 12s | -        | Added blocking collections                        |
+| 4 | 17cb41d |   1m 02s | -        | Merged calculation of people and movies and other |
 
 ### Improvement and implementation details
 
@@ -46,4 +47,6 @@ let splitLinks (line : string) =
 **Build 3:** Replaced string.Split() with string.Subsctring and indexOf in critical parts (while parsing top 3 biggest files)
 
 **Build 4** Add blocking collections to create pipeline like this: readline |> parse |> store
+
+**Build 5** Merged calculation of people and movies and calculation of links ratings and tags into two tasks
 
