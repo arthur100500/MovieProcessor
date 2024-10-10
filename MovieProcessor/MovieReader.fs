@@ -81,27 +81,35 @@ module MovieLoader =
         // Tags
         let tags = Dictionary<string, HashSet<Movie>>()
         let ruEnImdbIds = HashSet<_>([])
-        let waitIgnore (task: Task) = task.Wait()
 
         // Create movie with empty tags and no rating
         logger.info "Loading movies"
-        movieCodes (fun row ->
+        let loadMovies = movieCodes (fun row ->
             let imdbId = row.titleId
             ruEnImdbIds.Add imdbId |> ignore
             let movie = Movie(imdbId, row.title, HashSet<Tag>([]))
-            movies.TryAdd(imdbId, movie) |> ignore) |> waitIgnore
+            movies.TryAdd(imdbId, movie) |> ignore)
+        
+        // Create people
+        logger.info "Loading people"
+        let loadPeople = actorsDirectorsNames (fun row ->
+            let person = Person(row.nconst, row.primaryName)
+            people.TryAdd(row.nconst, person) |> ignore)
+        
+        logger.info "Waiting people and movies"
+        [|loadMovies; loadPeople|] |> Task.WaitAll
 
         // Set rating
         logger.info "Loading movie ratings"
-        ratingsImdb (fun row ->
+        let loadRatings = ratingsImdb (fun row ->
             let movie = tryGet movies row.tconst
             let rating = row.averageRating |> float32
-            movie |> Option.iter (_.SetRating(rating))) |> waitIgnore
+            movie |> Option.iter (_.SetRating(rating)))
             
         // Set tags
         // TODO: Filter by imdbId in ru/en
         logger.info "Loading movie tags"
-        tagScores (fun row ->
+        let loadScores = tagScores (fun row ->
             let imdbId = row.movieId |> tryGet imdbOfMl |> Option.map (_.imdbId)
             let movie = imdbId |> Option.bind (tryGet movies)
             let tag = tryGet tagCodesDict row.tagId |> Option.map (_.tag)
@@ -112,17 +120,11 @@ module MovieLoader =
                 tags.TryAdd(tag, HashSet<Movie>([])) |> ignore
                 tags[tag].Add movie |> ignore
                 movie.AddTag tag |> ignore))
-            else ()) |> waitIgnore
-
-        // Create people
-        logger.info "Loading people"
-        actorsDirectorsNames (fun row ->
-            let person = Person(row.nconst, row.primaryName)
-            people.TryAdd(row.nconst, person) |> ignore) |> waitIgnore
+            else ())
 
         // Link people to movies
         logger.info "Linking people and movies"
-        actorsDirectorsCodes (fun row ->
+        let loadActorsLink = actorsDirectorsCodes (fun row ->
             tryGet movies row.tconst |> Option.iter (fun movie ->
             tryGet people row.nconst |> Option.iter (fun person ->
             match row.category with
@@ -132,7 +134,10 @@ module MovieLoader =
             | 'd' ->
                 movie.AddDirector person |> ignore
                 person.AddMovie movie |> ignore
-            | _ -> ()))) |> waitIgnore
+            | _ -> ())))
+        
+        logger.info "Waiting tag, scores, and linking people"
+        [|loadRatings; loadScores; loadActorsLink|] |> Task.WaitAll
 
         let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.GetTitle(), movie) movies |> dict
         let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.GetPrimaryName(), person) people |> dict

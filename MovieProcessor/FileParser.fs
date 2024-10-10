@@ -96,30 +96,24 @@ module FileParser =
         let reader = new StreamReader(fileReadStream)
 
         let addTask = Task.Run (fun () ->
-            printf "  | Adding lines "
             reader.ReadLine() |> ignore
             let mutable line = reader.ReadLine()
             while line <> null do
                 fileReadCollection.Add(line)
                 line <- reader.ReadLine()
             fileReadCollection.CompleteAdding()
-            printf "  | Complete     "
-            (* reader.Dispose()*))
+            reader.Dispose())
 
         let parseTask = Task.Run (fun () ->
-            printf "| Parsing lines "
             let readSequence = fileReadCollection.GetConsumingEnumerable()
             readSequence |> Seq.iter (fun i -> parse i |> Option.iter funcApplyCollection.Add)
             funcApplyCollection.CompleteAdding()
-            printf "| Complete      "
-            (* fileReadCollection.Dispose()*) )
+            fileReadCollection.Dispose())
 
         let funcApplyTask = Task.Run (fun () ->
-            printfn "| Applying functions"
             let applySequence = funcApplyCollection.GetConsumingEnumerable()
             applySequence |> Seq.iter f
-            printfn "| Complete"
-            (*funcApplyCollection.Dispose()*))
+            funcApplyCollection.Dispose())
 
         [addTask; parseTask; funcApplyTask] |> Task.WhenAll
 
