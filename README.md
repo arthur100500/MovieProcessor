@@ -10,6 +10,7 @@ Run time is avarage between 3 runs
 | 1 | 22bb500 |   1m 41s | -        | Initial build                                   |
 | 2 | 17c690a |   1m 05s | -        | Replaced CSVProvider by custom implementation   |
 | 3 | 168ffb9 |      45s | -        | Replaced Split() to Substring in critical parts |
+| 4 | 17cb41d |   1m 12s | -        | Add blocking collections                        |
 
 ### Improvement and implementation details
 
@@ -43,3 +44,6 @@ let splitLinks (line : string) =
      imdbId=imdbId |> Int32.Parse}
 ```
 **Build 3:** Replaced string.Split() with string.Subsctring and indexOf in critical parts (while parsing top 3 biggest files)
+
+**Build 4** Add blocking collections to create pipeline like this: readline |> parse |> store
+
