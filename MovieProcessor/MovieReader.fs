@@ -1,31 +1,29 @@
 ﻿namespace MovieProcessor
 open System
-open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
-open FSharp.Data
+open DatabaseInteraction
 open MovieProcessor.FileParser
 open MovieProcessor.Logger
-open MovieProcessor.Movie
 
 module MovieLoader =
 
     type Dataset =
         { movies: IDictionary<string, Movie>
           people: IDictionary<string, Person>
-          tags: IDictionary<string, ConcurrentHashSet<Movie>>
+          tags: IDictionary<string, Tag>
           moviesById: IDictionary<int, Movie>
           peopleById: IDictionary<int, Person> }
 
     let inline dictByField fieldFactory collectionIter =
-        let dictionary = ConcurrentDictionary<_, _>()
+        let dictionary = Dictionary<_, _>()
         collectionIter (fun r -> dictionary.TryAdd(fieldFactory r, r) |> ignore)
         dictionary
 
     let inline groupByField fieldFactory collectionIter =
         let allFields = collectionIter fieldFactory |> Seq.distinct
-        let result = ConcurrentDictionary<_, _>()
-        Seq.iter (fun f -> result.TryAdd(f, ConcurrentHashSet<_>()) |> ignore) allFields
+        let result = Dictionary<_, _>()
+        Seq.iter (fun f -> result.TryAdd(f, HashSet<_>()) |> ignore) allFields
         collectionIter (fun entry -> result[fieldFactory entry].Add(entry)) |> ignore
         result
 
@@ -40,35 +38,35 @@ module MovieLoader =
 
         let actorsDirectorsCodes =
             Path.Combine [|path; "ActorsDirectorsCodes_IMDB.tsv"|]
-            |> FileParser.fileIter splitActorsDirectors
+            |> fileIter splitActorsDirectors
 
         let actorsDirectorsNames =
             Path.Combine [|path; "ActorsDirectorsNames_IMDB.txt"|]
-            |> FileParser.fileIter splitActorsDirectorsNames
+            |> fileIter splitActorsDirectorsNames
             
         let actorsDirectorsCodesCopy =
             Path.Combine [|path; "ActorsDirectorsCodes_IMDB.tsv"|]
-            |> FileParser.fileMap splitActorsDirectors
+            |> fileMap splitActorsDirectors
             
         let ratingsImdb =
             Path.Combine [|path; "Ratings_IMDB.tsv"|]
-            |> FileParser.fileIter splitRatings
+            |> fileIter splitRatings
             
         let linksImdbMovieLens =
             Path.Combine [|path; "links_IMDB_MovieLens.csv"|]
-            |> FileParser.fileIter splitLinks
+            |> fileIter splitLinks
             
         let movieCodes =
             Path.Combine [|path; "MovieCodes_IMDB.tsv"|]
-            |> FileParser.fileMap splitMovieCodes
+            |> fileMap splitMovieCodes
             
         let tagCodes =
             Path.Combine [|path; "TagCodes_MovieLens.csv"|]
-            |> FileParser.fileIter splitTagCodes
+            |> fileIter splitTagCodes
             
         let tagScores =
             Path.Combine [|path; "TagScores_MovieLens.csv"|]
-            |> FileParser.fileIter splitTagScores
+            |> fileIter splitTagScores
             
         // Dictionaries for fast loading
         logger.info "Organizing data into dictionaries"
@@ -78,29 +76,37 @@ module MovieLoader =
         let imdbOfMl = dictByField (fun (x : linksRow) -> x.movieId) linksImdbMovieLens
 
         // IMDB ID to Movie
-        let movies = ConcurrentDictionary<int, Movie>(Environment.ProcessorCount, 980000)
+        let movies = Dictionary<int, Movie>()
         // NM ID to Person
-        let people = ConcurrentDictionary<int, Person>(Environment.ProcessorCount, 1500000)
+        let people = Dictionary<int, Person>()
         // Tags
-        let tags = ConcurrentDictionary<string, ConcurrentHashSet<Movie>>(Environment.ProcessorCount, 2000)
+        let tags = Dictionary<int, Tag>()
 
         let ruEn = movieCodes |> Seq.filter (fun r -> r.region = "RU" || r.region = "US" || r.region = "GB" || r.region = "AU")
-        let ruEnImdbIds = ConcurrentHashSet<_>()
+        let ruEnImdbIds = HashSet<_>()
+
+        let mutable latestId = -1
+        let mutable latestMovie : Movie = null
 
         // Create movie with empty tags and no rating
         logger.info "Loading movies"
         for row in ruEn do
-            let imdbId = row.titleId
-            ruEnImdbIds.Add imdbId |> ignore
-            let movie = Movie(imdbId, row.title, ConcurrentHashSet<Tag>())
-            movies.TryAdd(imdbId, movie) |> ignore
+            if latestId <= row.titleId then
+                let imdbId = row.titleId
+                ruEnImdbIds.Add imdbId |> ignore
+                let movie = Movie(imdbId, row.title, HashSet<_>(), HashSet<_>(), HashSet<Tag>(), 0f)
+                movies.TryAdd(imdbId, movie) |> ignore
+                latestId <- row.titleId
+                latestMovie <- movie
+            else
+                latestMovie.AddTitle(row.title)
 
         // Set rating
         logger.info "Loading movie ratings"
         ratingsImdb (fun row ->
             let movie = tryGet movies row.tconst
             let rating = row.averageRating |> float32
-            movie |> Option.iter (_.SetRating(rating)))
+            movie |> Option.iter (fun (x : Movie) -> x.Rating <- rating))
             
         // Set tags
         // TODO: Filter by imdbId in ru/en
@@ -113,9 +119,9 @@ module MovieLoader =
             if scoreValid then
                 movie |> Option.iter (fun movie ->
                 tag |> Option.iter (fun tag ->
-                tags.TryAdd(tag, ConcurrentHashSet<Movie>()) |> ignore
-                tags[tag].Add movie |> ignore
-                movie.AddTag tag |> ignore))
+                tags.TryAdd(row.tagId, Tag(row.tagId, tag, HashSet<Movie>())) |> ignore
+                tags[row.tagId].Movies.Add movie
+                movie.Tags.Add (tags[row.tagId])))
             else ())
         
         logger.info "Calculating relevant actors and directors ids"
@@ -123,7 +129,7 @@ module MovieLoader =
         // Create people
         logger.info "Loading people"
         actorsDirectorsNames (fun row ->
-            let person = Person(row.nconst, row.primaryName)
+            let person = Person(row.nconst, row.primaryName, HashSet<_>())
             people.TryAdd(row.nconst, person) |> ignore)
 
         // Link people to movies
@@ -133,16 +139,17 @@ module MovieLoader =
             tryGet people row.nconst |> Option.iter (fun person ->
             match row.category with
             | 'a' | 's' ->
-                movie.AddActor person |> ignore
-                person.AddMovie movie |> ignore
+                movie.Actors.Add person
+                person.Movies.Add movie
             | 'd' ->
-                movie.AddDirector person |> ignore
-                person.AddMovie movie |> ignore
+                movie.Directors.Add person
+                person.Movies.Add movie
             | _ -> ())))
 
-        let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.GetTitle(), movie) movies |> dict
-        let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.GetPrimaryName(), person) people |> dict
+        let moviesByName = Seq.map (fun (KeyValue(_, movie : Movie)) -> movie.PrimaryTitle, movie) movies |> dict
+        let peopleByName = Seq.map (fun (KeyValue(_, person : Person)) -> person.PrimaryName, person) people |> dict
+        let tagsByName = Seq.map (fun (KeyValue(_, person : Tag)) -> person.Name, person) tags |> dict
 
         waitForAllTasks()
 
-        { movies = moviesByName; people = peopleByName; tags = tags; moviesById = movies; peopleById = people}
+        { movies = moviesByName; people = peopleByName; tags = tagsByName; moviesById = movies; peopleById = people}
