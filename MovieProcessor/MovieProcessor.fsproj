@@ -10,6 +10,7 @@
         <Compile Include="Logger.fs" />
         <Compile Include="FileParser.fs" />
         <Compile Include="MovieReader.fs" />
+        <Compile Include="Similarity.fs" />
         <Compile Include="CLI.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>

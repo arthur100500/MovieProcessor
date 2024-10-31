@@ -51,33 +51,35 @@ public record Movie
         return $"{MovieId} - {PrimaryTitle}";
     }
 
-    public List<Person> GetActors(ApplicationContext context)
+    public IQueryable<Person> GetActors(ApplicationContext context)
     {
         var actors = context.ActorsMovies
             .Where(p => p.MovieId == MovieId)
             .Join(context.People, l => l.ActorId, p => p.PersonId, (u, c) => c);
-
-        var list = actors.ToList();
-        return list;
+        return actors;
     }
 
-    public List<Person> GetDirectors(ApplicationContext context)
+    public IQueryable<Person> GetDirectors(ApplicationContext context)
     {
         var directors = context.DirectorsMovies
             .Where(p => p.MovieId == MovieId)
             .Join(context.People, l => l.DirectorId, p => p.PersonId, (u, c) => c);
-
-        var list = directors.ToList();
-        return list;
+        return directors;
     }
 
-    public List<Tag> GetTags(ApplicationContext context)
+    public IQueryable<Tag> GetTags(ApplicationContext context)
     {
         var tags = context.TagsMovies
             .Where(p => p.MovieId == MovieId)
             .Join(context.Tags, l => l.TagId, p => p.TagId, (u, c) => c);
+        return tags;
+    }
 
-        var list = tags.ToList();
-        return list;
+    public IQueryable<Person> GetCast(ApplicationContext context)
+    {
+        var actors = GetActors(context);
+        var directors = GetDirectors(context);
+        var actorsDirectors = actors.Concat(directors);
+        return actorsDirectors;
     }
 }

@@ -1,6 +1,7 @@
 ﻿namespace MovieProcessor
 
 open System
+open System.Collections.Generic
 open System.Linq
 open DatabaseInteraction
 
@@ -50,11 +51,14 @@ Warning: all commands are case-sensitive
         | Some tag -> printfn $"Movies for {tag.Name}: {stringOfMovieNames tag.Movies comma}"
         | None -> printfn $"Found no tags with name or id being \"{identifier}\""
 
-    let printMovie (identifier : string) (dataset : ApplicationContext) =
+    let findMovie (identifier : string) (dataset : ApplicationContext) : Movie option =
         let isInt, value = identifier |> Int32.TryParse
         let result = if isInt then dataset.Movies.Find(value) |> Option.ofObj else None
         let result = if result.IsNone then dataset.Movies.SingleOrDefault(fun (e : Movie) -> e.PrimaryTitle = identifier) |> Option.ofObj else result
-        match result with
+        result
+
+    let printMovie (identifier : string) (dataset : ApplicationContext) =
+        match findMovie identifier dataset with
         | Some movie ->
             printfn $"Title - {movie.PrimaryTitle}"
             printfn $"Director - {stringOfPeople (movie.GetDirectors(dataset)) comma}"
@@ -102,9 +106,15 @@ Warning: all commands are case-sensitive
             printTags page "\n" (pageSize * value)
         | false -> printfn $"Provided page is not valid! (Not an integer or bigger than {tagsOrdered.Length / pageSize})"
 
+    let similar (context : ApplicationContext) (id : string) =
+        findMovie id context |> Option.iter (fun movie ->
+        let candidates = Similarity.similarityCandidates context movie
+        let candidatesSimilarityMap = candidates.ToList() |> Seq.map (fun m -> (Similarity.similarity context movie m, m)) |> dict
+        let sortedWeights = candidatesSimilarityMap.Keys |> Seq.sortDescending
+        Seq.iter (fun (w : float32) -> printfn $"[%2f{w}] -> {candidatesSimilarityMap[w].MovieId} - {candidatesSimilarityMap[w].PrimaryTitle}") sortedWeights)
 
     let rec run (data : ApplicationContext) =
-        printfn "Loading CLI..."
+        printfn "Loading Tags eagerly..."
         let tagsOrdered = data.GetAllTags() |> Seq.sortByDescending (_.Movies.Count) |> Seq.toArray
         let rec loop () =
             printf "MP> "
@@ -118,6 +128,7 @@ Warning: all commands are case-sensitive
             | "movie" :: id -> printMovie (String.Join(" ", id)) data
             | ["people"; page] -> printPeoplePage page data
             | "person" :: id -> printPerson (String.Join(" ", id)) data
+            | "similar" :: id -> similar data (String.Join(" ", id))
             | _ -> printfn $"%s{helpMessage}"
             printfn ""
             loop ()
