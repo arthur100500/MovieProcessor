@@ -69,4 +69,9 @@ public class ApplicationContext : DbContext
 
         modelBuilder.Entity<Tag>(f => f.ToTable("Tags"));
     }
+
+    public Microsoft.EntityFrameworkCore.Query.IIncludableQueryable<Tag, ICollection<Movie>> GetAllTags()
+    {
+        return Tags.Include(t => t.Movies);
+    }
 }

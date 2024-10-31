@@ -35,6 +35,7 @@ Warning: all commands are case-sensitive
 
     let stringOfTags (tags: Tag seq) =
         let tags = if tags = null then Seq.ofList [] else tags
+        let tags = Seq.map (fun (i : Tag) -> i.Name) tags
         String.Join(", ", tags)
 
     let printTags (tagsOrdered : Tag array) (separator: string) (start : int)=
@@ -103,18 +104,21 @@ Warning: all commands are case-sensitive
 
 
     let rec run (data : ApplicationContext) =
-        printf "MP> "
-        let input = Console.ReadLine().Split() |> List.ofArray
-        let tagsOrdered = data.Tags |> Seq.sortByDescending (_.Movies.Count) |> Seq.toArray
-        match input with
-        | ["help"] -> printfn $"%s{helpMessage}"
-        | ["tags"] -> printTags tagsOrdered ", " 0
-        | ["tags"; page] -> printTagPage page tagsOrdered
-        | "tag" :: id -> printTag (String.Join(" ", id)) tagsOrdered
-        | ["movies"; page] -> printMoviePage page data
-        | "movie" :: id -> printMovie (String.Join(" ", id)) data
-        | ["people"; page] -> printPeoplePage page data
-        | "person" :: id -> printPerson (String.Join(" ", id)) data
-        | _ -> printfn $"%s{helpMessage}"
-        printfn ""
-        run data
+        printfn "Loading CLI..."
+        let tagsOrdered = data.GetAllTags() |> Seq.sortByDescending (_.Movies.Count) |> Seq.toArray
+        let rec loop () =
+            printf "MP> "
+            let input = Console.ReadLine().Split() |> List.ofArray
+            match input with
+            | ["help"] -> printfn $"%s{helpMessage}"
+            | ["tags"] -> printTags tagsOrdered ", " 0
+            | ["tags"; page] -> printTagPage page tagsOrdered
+            | "tag" :: id -> printTag (String.Join(" ", id)) tagsOrdered
+            | ["movies"; page] -> printMoviePage page data
+            | "movie" :: id -> printMovie (String.Join(" ", id)) data
+            | ["people"; page] -> printPeoplePage page data
+            | "person" :: id -> printPerson (String.Join(" ", id)) data
+            | _ -> printfn $"%s{helpMessage}"
+            printfn ""
+            loop ()
+        loop ()
