@@ -8,8 +8,8 @@ public record ActorsMoviesLinks()
     public int ActorsMoviesLinkId { get; set; }
     public int ActorId { get; set; }
     public int MovieId { get; set; }
-    public Person Actor { get; set; }
-    public Movie Movie { get; set; }
+    public Person? Actor { get; set; }
+    public Movie? Movie { get; set; }
 
     public ActorsMoviesLinks(Person actor, Movie movie) : this()
     {

@@ -50,4 +50,34 @@ public record Movie
     {
         return $"{MovieId} - {PrimaryTitle}";
     }
+
+    public List<Person> GetActors(ApplicationContext context)
+    {
+        var actors = context.ActorsMovies
+            .Where(p => p.MovieId == MovieId)
+            .Join(context.People, l => l.ActorId, p => p.PersonId, (u, c) => c);
+
+        var list = actors.ToList();
+        return list;
+    }
+
+    public List<Person> GetDirectors(ApplicationContext context)
+    {
+        var directors = context.DirectorsMovies
+            .Where(p => p.MovieId == MovieId)
+            .Join(context.People, l => l.DirectorId, p => p.PersonId, (u, c) => c);
+
+        var list = directors.ToList();
+        return list;
+    }
+
+    public List<Tag> GetTags(ApplicationContext context)
+    {
+        var tags = context.TagsMovies
+            .Where(p => p.MovieId == MovieId)
+            .Join(context.Tags, l => l.TagId, p => p.TagId, (u, c) => c);
+
+        var list = tags.ToList();
+        return list;
+    }
 }

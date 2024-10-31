@@ -8,8 +8,7 @@ open MovieLoader
 open MovieProcessor.Logger
 
 module Program =
-    let writeDataset (dataset : Dataset) (logger : ILogger) =
-        use db = new ApplicationContext()
+    let writeDataset (dataset : Dataset) (logger : ILogger) (db : ApplicationContext) =
         let moviesArray = Array.zeroCreate dataset.moviesById.Count
         let peopleArray = Array.zeroCreate dataset.peopleById.Count
         let tagArray = Array.zeroCreate dataset.tags.Count
@@ -48,8 +47,12 @@ module Program =
     let main args =
         let path = args[0]
         let logger = ConsoleLogger()
-        let dataset = load path logger
-        writeDataset dataset logger
-        (logger :> ILogger).info "Ready"
-        // CLI.run dataset
+        use context = new ApplicationContext()
+        match context.GetTableRowsCount(context.Movies) with
+        | 0 ->
+            let dataset = load path logger
+            writeDataset dataset logger context
+            (logger :> ILogger).info "Ready"
+        | _ -> ()
+        CLI.run context
         0

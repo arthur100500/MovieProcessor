@@ -20,6 +20,11 @@ public class ApplicationContext : DbContext
         optionsBuilder.EnableSensitiveDataLogging();
     }
 
+    public int GetTableRowsCount<T>(DbSet<T> set) where T : class
+    {
+        return set.Count();
+    }
+
     public int ExecuteSql(string query) => Database.ExecuteSqlRaw(query);
 
 
