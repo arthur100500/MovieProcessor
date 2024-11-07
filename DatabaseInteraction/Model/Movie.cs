@@ -6,9 +6,10 @@ using Microsoft.EntityFrameworkCore;
 namespace DatabaseInteraction;
 
 [PrimaryKey(nameof(MovieId))]
-public record Movie
+public record Movie : IWithNumericalId
 {
     public int MovieId { get; private set; }
+    public int NumericalId { get; private set; }
     [NotMapped]
     public ICollection<Title> Titles { get; private set; }
     public ICollection<Person> Actors { get; private set; }
@@ -19,7 +20,7 @@ public record Movie
 
     public Movie() { }
 
-    public Movie(int movieId, string title, ICollection<Person> actors, ICollection<Person> directors, ICollection<Tag> tags, float rating)
+    public Movie(int movieId, string title, ICollection<Person> actors, ICollection<Person> directors, ICollection<Tag> tags, float rating, int numericalId)
     {
         MovieId = movieId;
         Titles = new HashSet<Title>([new Title(title, this)]);
@@ -28,6 +29,7 @@ public record Movie
         PrimaryTitle = title;
         Tags = tags;
         Rating = rating;
+        NumericalId = numericalId;
     }
 
     public Movie WithNoLinks()
@@ -36,7 +38,8 @@ public record Movie
         {
             MovieId = MovieId,
             PrimaryTitle = PrimaryTitle,
-            Rating = Rating
+            Rating = Rating,
+            NumericalId = NumericalId
         };
         return copy;
     }

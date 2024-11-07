@@ -1,0 +1,50 @@
+﻿.movie-header-box {
+    display: grid;
+    grid-template-columns: 1fr 4rem;
+}
+
+.person-entry {
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    border: 1px solid #eeeeee;
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+.person-entry:hover {
+    background-color: #eeeeee;
+    border: 1px solid #eeeeee;
+}
+
+.person-title {
+    text-overflow: ellipsis;
+    font-size: 1.5rem;
+}
+
+.person-rating {
+    font-size: 1.5rem;
+    font-weight: 500;
+    text-align: right;
+}
+
+.person-section-title{
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.titled-list {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.persons-list {
+    display: inline-block;
+}
+
+a {
+    padding-right: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 300;
+    text-decoration: none;
+}

@@ -1,0 +1,41 @@
+﻿@using DatabaseInteraction
+
+<div class="movie-entry" onClick="window.location='/movie/@(Entry.MovieId)'">
+    <div class="movie-header-box">
+        <span class="movie-title"> @Entry.PrimaryTitle </span>
+        <span class="movie-rating"> @Entry.Rating ⭐ </span>
+    </div>
+    <div class="titled-list">
+        <span class="movie-section-title"> Actors: </span>
+        <div class="actors-list">
+            @foreach (var actor in Entry.GetActors(_context))
+            {
+                <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
+            }
+        </div>
+    </div>
+    <div class="titled-list">
+        <span class="movie-section-title"> Directors: </span>
+        <div class="directors-list">
+            @foreach (var actor in Entry.GetDirectors(_context))
+            {
+                <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
+            }
+        </div>
+    </div>
+    @if (Entry.GetTags(_context).Any())
+    {
+        <div class="directors-list">
+            @foreach (var tag in Entry.GetTags(_context))
+            {
+                <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public DatabaseInteraction.Movie Entry { get; set; }
+    private ApplicationContext _context = DbFactory.GetContext();
+}

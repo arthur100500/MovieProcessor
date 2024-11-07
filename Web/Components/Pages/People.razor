@@ -1,0 +1,23 @@
+﻿@page "/people"
+@page "/people/{page:int}"
+@attribute [StreamRendering(true)]
+
+<Search Address="/people"/>
+
+<PaginationComponent
+    Title="People"
+    T="DatabaseInteraction.Person"
+    Page="@(Page ?? 0)"
+    Address="/people"
+    Collection="@_context!.People.Where(m => m.PrimaryName.Contains(Filter ?? ""))"
+    UseNId=@(Filter is "" or null)
+    ComponentType="@typeof(PersonEntry)"/>
+
+
+@using DatabaseInteraction
+@code {
+    [Parameter] public int? Page { get; set; }
+    private readonly ApplicationContext? _context = DbFactory.GetContext();
+    [SupplyParameterFromQuery]
+    public string? Filter { get; set; }
+}

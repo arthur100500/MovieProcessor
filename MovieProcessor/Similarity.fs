@@ -20,7 +20,7 @@ module Similarity =
         let firstInSecond = firstTags |> Seq.filter secondTags.Contains |> Seq.length
         let secondInFirst = secondTags |> Seq.filter firstTags.Contains |> Seq.length
         let tagsSimilarityIndex = (1 + firstInSecond + secondInFirst) / (1 + Seq.length firstTags + Seq.length secondTags)
-        float32(peopleSimilarityIndex + tagsSimilarityIndex) * 0.25f + second.Rating * 0.0ефп 5f
+        float32(peopleSimilarityIndex + tagsSimilarityIndex) * 0.25f + second.Rating * 0.05f
 
     let similarityCandidates (context : ApplicationContext) (target : Movie) =
         let castIds = target.GetActors(context) |> Seq.append (target.GetDirectors(context)) |> Seq.map (_.PersonId)

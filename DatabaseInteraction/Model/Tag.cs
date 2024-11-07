@@ -22,4 +22,17 @@ public record Tag(int TagId, string Name, ICollection<Movie> Movies)
         };
         return copy;
     }
+
+    public int CountMovies(ApplicationContext context)
+    {
+        return context.TagsMovies.Count(x => x.TagId == TagId);
+    }
+
+    public IQueryable<Movie> GetMovies(ApplicationContext context)
+    {
+        var movies = context.TagsMovies
+            .Where(p => p.TagId == TagId)
+            .Join(context.Movies, l => l.MovieId, p => p.MovieId, (u, c) => c);
+        return movies;
+    }
 }

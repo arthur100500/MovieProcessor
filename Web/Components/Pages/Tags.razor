@@ -1,0 +1,22 @@
+﻿@page "/tags"
+@using DatabaseInteraction
+@using Microsoft.EntityFrameworkCore
+
+<div class="tag-list">
+    @foreach (var tag in _tags)
+    {
+        <div class="tag-link">
+            <a href="/tag/@tag.TagId"> @tag.Name - @tag.CountMovies(_context) </a>
+        </div>
+    }
+</div>
+
+@code {
+    private ApplicationContext _context = DbFactory.GetContext();
+    private List<DatabaseInteraction.Tag> _tags;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tags = await _context.Tags.ToListAsync();
+    }
+}

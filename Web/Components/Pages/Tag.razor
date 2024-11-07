@@ -1,0 +1,33 @@
+﻿@page "/tag/{id:int}"
+@using DatabaseInteraction
+@using Web.Components.Misc
+
+@if (_tag is null)
+    {
+    <LoadingCircle/>
+    }
+else
+{
+    <h1> [@Id] @_tag.Name</h1>
+    <h1> Movies with this tag </h1>
+    <div class="movie-list">
+        @foreach (var movie in _tag.GetMovies(_context))
+        {
+            <a href=@($"/movie/{movie.MovieId}")> @movie.PrimaryTitle </a>
+        }
+    </div>
+}
+
+@code {
+[Parameter]
+public int? Id { get; set; }
+
+private ApplicationContext _context = DbFactory.GetContext();
+private DatabaseInteraction.Tag? _tag;
+
+protected override async Task OnInitializedAsync()
+{
+    _tag = await _context.Tags.FindAsync(Id);
+    await Task.Delay(1);
+    }
+}

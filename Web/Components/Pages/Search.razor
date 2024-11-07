@@ -1,0 +1,11 @@
+﻿<form action="@Address" data-enhance data-permanent>
+    <div class="search-form">
+        <input class="search" type="search" name="filter" placeholder="Search by name"/>
+        <input class="submit" type="submit" value="Search"/>
+    </div>
+</form>
+
+@code {
+    [Parameter]
+    public string? Address { get; set; }
+}

@@ -1,0 +1,21 @@
+﻿.search-form {
+    display: grid;
+    grid-template-columns: 1fr 10rem;
+    gap: 0.5rem;
+}
+
+.search {
+    padding: 12px;
+    width: 100%;
+    border: 1px solid #aaaaaa;
+    border-radius: 10px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    font-size: 1.2rem;
+}
+
+.submit {
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    border: 1px solid #aaaaaa;
+    font-size: 1.2rem;
+}

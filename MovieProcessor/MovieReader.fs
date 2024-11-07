@@ -87,14 +87,17 @@ module MovieLoader =
 
         let mutable latestId = -1
         let mutable latestMovie : Movie = null
+        let mutable numericalId = 0
+        let mutable personNumericalId = 0;
 
         // Create movie with empty tags and no rating
         logger.info "Loading movies"
         for row in ruEn do
-            if latestId <= row.titleId then
+            if latestId < row.titleId then
+                numericalId <- numericalId + 1
                 let imdbId = row.titleId
                 ruEnImdbIds.Add imdbId |> ignore
-                let movie = Movie(imdbId, row.title, HashSet<_>(), HashSet<_>(), HashSet<Tag>(), 0f)
+                let movie = Movie(imdbId, row.title, HashSet<_>(), HashSet<_>(), HashSet<Tag>(), 0f, numericalId)
                 movies.TryAdd(imdbId, movie) |> ignore
                 latestId <- row.titleId
                 latestMovie <- movie
@@ -129,7 +132,8 @@ module MovieLoader =
         // Create people
         logger.info "Loading people"
         actorsDirectorsNames (fun row ->
-            let person = Person(row.nconst, row.primaryName, HashSet<_>())
+            personNumericalId <- personNumericalId + 1
+            let person = Person(row.nconst, row.primaryName, HashSet<_>(), personNumericalId)
             people.TryAdd(row.nconst, person) |> ignore)
 
         // Link people to movies

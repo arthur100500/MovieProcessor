@@ -1,0 +1,42 @@
+﻿@page "/person/{Id:int}"
+@using DatabaseInteraction
+@using Web.Components.Misc
+@attribute [StreamRendering(true)]
+
+@if (_person is null)
+{
+    <LoadingCircle/>
+}
+else
+{
+    <h1> [@Id] @_person.PrimaryName</h1>
+    <h1> Was actor in </h1>
+    <div class="movie-list">
+        @foreach (var actor in _person.GetMoviesAsActor(_context))
+        {
+            <a href=@($"/movie/{actor.MovieId}")> @actor.PrimaryTitle </a>
+        }
+    </div>
+
+    <h1> Was director in </h1>
+    <div class="movie-list">
+        @foreach (var actor in _person.GetMoviesAsDirector(_context))
+        {
+            <a href=@($"/movie/{actor.MovieId}")> @actor.PrimaryTitle </a>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private ApplicationContext _context = DbFactory.GetContext();
+    private DatabaseInteraction.Person? _person;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _person = await _context.People.FindAsync(Id);
+        await Task.Delay(1);
+    }
+}

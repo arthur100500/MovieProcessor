@@ -1,0 +1,69 @@
+﻿@typeparam T where T : class, DatabaseInteraction.IWithNumericalId
+@using Microsoft.EntityFrameworkCore
+@using Web.Components.Misc
+@attribute [StreamRendering(true)]
+
+<h1>@Title @(Page * PageSize) - @((Page + 1) * PageSize) </h1>
+
+@if (_displayError is not null)
+{
+    <span class="error"> @_displayError </span>
+}
+
+@if (_loading || _entries is null)
+{
+    <LoadingCircle/>
+}
+else
+{
+    <div class="pagination-list">
+        @foreach (var e in _entries)
+        {
+            <DynamicComponent Type="@ComponentType" Parameters="@ParametersOfEntry(e)"/>
+        }
+    </div>
+    <PaginationControl Address="@Address" Page="@Page" PageUpperBoundary="@(_maxPage ?? 0)"/>
+}
+
+@code {
+    [Parameter] public IQueryable<T>? Collection { get; set; }
+    [Parameter] public int Page { get; set; }
+    [Parameter] public string Title { get; set; }
+    [Parameter] public Type ComponentType { get; set; }
+    [Parameter] public string Address { get; set; }
+    [Parameter] public bool UseNId { get; set; }
+
+    private const int PageSize = 20;
+    private ICollection<T>? _entries;
+    private bool _loading;
+    private string? _displayError;
+    private int? _maxPage;
+
+    private Dictionary<string, object> ParametersOfEntry(object entry)
+    {
+        var p = new Dictionary<string, object> { { "Entry", entry } };
+        return p;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Collection is null) throw new ArgumentException("Collection was null");
+        _loading = true;
+
+        try
+        {
+            var pagination = new Pagination<T>(Collection);
+            _maxPage = pagination.GetMaxPage();
+            await Task.Delay(1);
+            _entries = await pagination.SelectPage(Page, UseNId);
+        }
+        catch (Exception e)
+        {
+            _displayError = e.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

@@ -1,0 +1,32 @@
+.navigation-outer {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+::deep .navigation-button {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #000000;
+}
+
+::deep .navigation-button-active {
+    text-decoration: underline;
+}
+
+@media screen and (max-width: 800px) {
+    .navigation-button {
+        font-size: 1rem;
+    }
+
+    .navigation-outer {
+        flex-direction: column;
+    }
+}
+
+
+.navigation-button-active {
+    text-decoration: underline;
+}

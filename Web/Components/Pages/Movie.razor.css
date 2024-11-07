@@ -1,0 +1,41 @@
+﻿.movie-title {
+    text-overflow: ellipsis;
+    font-size: 1.5rem;
+}
+
+.movie-rating {
+    font-size: 1.5rem;
+    font-weight: 500;
+    text-align: right;
+}
+
+.movie-section-title{
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.titled-list {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.directors-list {
+    display: inline-block;
+}
+
+.actors-list {
+    display: inline-block;
+}
+
+.similar-list {
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    padding-right: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 300;
+    text-decoration: none;
+}

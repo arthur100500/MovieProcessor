@@ -1,5 +1,6 @@
 ﻿using DatabaseInteraction.Link;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace DatabaseInteraction;
 
@@ -16,7 +17,7 @@ public class ApplicationContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlite("Data Source=movies.db");
+        optionsBuilder.UseSqlite("Data Source=C:\\Users\\arthur\\Documents\\MovieProcessor\\MovieProcessor\\bin\\Debug\\net8.0\\movies.db");
         optionsBuilder.EnableSensitiveDataLogging();
     }
 
@@ -36,6 +37,11 @@ public class ApplicationContext : DbContext
             .UsingEntity<ActorsMoviesLinks>(
                 r => r.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.ActorId),
                 l => l.HasOne(x => x.Movie).WithMany().HasForeignKey(x => x.MovieId));
+
+        modelBuilder.Entity<Movie>()
+            .Property(e => e.NumericalId)
+            .ValueGeneratedOnAdd()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
 
         modelBuilder.Entity<Movie>()
             .HasMany(b => b.Directors)

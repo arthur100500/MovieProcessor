@@ -1,0 +1,26 @@
+﻿
+<div class="pagination-control-outer">
+    <div class="pagination-control">
+        @for (var i = -3; i < 10; i++)
+        {
+            @if (Page + i >= PageUpperBoundary || Page + i < 0) continue;
+
+            @if (i == 0)
+            {
+                <span class="pagination-link-current"> @(Page + i) </span>
+                continue;
+            }
+
+            <span class="pagination-link" onClick="window.location='@($"{Address}/{Page + i}")'+window.location.search;"> @(Page + i) </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Page { get; set; }
+    [Parameter]
+    public int PageUpperBoundary { get; set; }
+    [Parameter]
+    public string? Address { get; set; }
+}

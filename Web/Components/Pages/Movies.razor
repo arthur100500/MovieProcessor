@@ -1,0 +1,23 @@
+﻿@page "/"
+@page "/movies"
+@page "/movies/{page:int}"
+@attribute [StreamRendering(true)]
+
+<Search Address="/movies"/>
+
+<PaginationComponent
+    Title="Movies"
+    Collection="@_context!.Movies.Where(m => m.PrimaryTitle.Contains(Filter ?? ""))"
+    UseNId=@(Filter is "" or null)
+    T="DatabaseInteraction.Movie"
+    Page="@(Page ?? 0)"
+    Address="/movies"
+    ComponentType="@typeof(MovieEntry)"/>
+
+@using DatabaseInteraction
+@code {
+    [Parameter] public int? Page { get; set; }
+    [SupplyParameterFromQuery]
+    public string? Filter { get; set; }
+    private readonly ApplicationContext? _context = DbFactory.GetContext();
+}

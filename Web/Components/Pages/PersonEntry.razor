@@ -1,0 +1,22 @@
+﻿@using DatabaseInteraction
+
+<div class="person-entry" onClick="window.location='/person/@(Entry.PersonId)'">
+    <div class="person-header-box">
+        <span class="person-title"> @Entry.PrimaryName </span>
+        <div></div>
+    </div>
+    <div class="titled-list">
+        <span class="person-section-title"> Movies </span>
+        <div class="actors-list">
+            @foreach (var movie in Entry.GetMovies(DbFactory.GetContext()))
+            {
+                <a href=@($"/movie/{movie.MovieId}")> @movie.PrimaryTitle </a>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public DatabaseInteraction.Person Entry { get; set; }
+}

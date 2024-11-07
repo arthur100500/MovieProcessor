@@ -1,0 +1,77 @@
+﻿@page "/movie/{Id:int}"
+@using DatabaseInteraction
+@using Microsoft.EntityFrameworkCore
+@using MovieProcessor
+@using Web.Components.Misc
+@attribute [StreamRendering(true)]
+
+@if (_movie is null)
+{
+    <LoadingCircle/>
+}
+else
+{
+
+    <h1> [@Id] @_movie.PrimaryTitle (@_movie.Rating⭐)</h1>
+
+    <h1> Cast </h1>
+
+    <div class="titled-list">
+        <span class="movie-section-title"> Actors </span>
+        <div class="actors-list">
+            @foreach (var actor in _movie.GetActors(_context))
+            {
+                <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
+            }
+        </div>
+    </div>
+    <div class="titled-list">
+        <span class="movie-section-title"> Directors </span>
+        <div class="directors-list">
+            @foreach (var actor in _movie.GetDirectors(_context))
+            {
+                <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
+            }
+        </div>
+    </div>
+
+    <h1> Similar movies </h1>
+
+    @if (_similar is null)
+    {
+        <LoadingCircle/>
+    }
+    else
+    {
+        <div class="similar-list">
+            @foreach (var kvp in _similar)
+            {
+                <span> @kvp.Key - <a href=@($"/movie/{kvp.Value.MovieId}")> @kvp.Value.PrimaryTitle </a></span>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private ApplicationContext _context = DbFactory.GetContext();
+    private DatabaseInteraction.Movie? _movie;
+    private List<KeyValuePair<float, DatabaseInteraction.Movie>>? _similar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _movie = await _context.Movies.FindAsync(Id);
+        await Task.Delay(1);
+        _similar = await FindSimilar();
+    }
+
+    private async Task<List<KeyValuePair<float, DatabaseInteraction.Movie>>> FindSimilar()
+    {
+        var candidates = Similarity.similarityCandidates(_context, _movie);
+        var similarities = candidates.Select(c => new KeyValuePair<float, DatabaseInteraction.Movie>(Similarity.similarity(_context, _movie, c), c));
+        var simList = await similarities.ToListAsync();
+        return simList.OrderByDescending(c => c.Key).ToList();
+    }
+}
