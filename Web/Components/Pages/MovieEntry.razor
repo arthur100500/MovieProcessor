@@ -23,13 +23,15 @@
             }
         </div>
     </div>
-    @if (Entry.GetTags(_context).Any())
-    {
+    @if (!Entry.GetTags(_context).Any()) {
+    } else if (Entry.GetTags(_context).Count() < 10) {
         <div class="directors-list">
-            @foreach (var tag in Entry.GetTags(_context))
-            {
-                <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a>
-            }
+            @foreach (var tag in Entry.GetTags(_context)) { <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a> }
+        </div>
+    } else {
+        <div class="directors-list">
+            @foreach (var tag in Entry.GetTags(_context).Take(10)) { <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a> }
+            ...
         </div>
     }
 </div>

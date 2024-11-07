@@ -35,6 +35,17 @@ else
         </div>
     </div>
 
+    @if (_movie.GetTags(_context).Any())
+    {
+        <h1> Tags </h1>
+        <div class="directors-list">
+            @foreach (var tag in _movie.GetTags(_context))
+            {
+                <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a>
+            }
+        </div>
+    }
+
     <h1> Similar movies </h1>
 
     @if (_similar is null)
