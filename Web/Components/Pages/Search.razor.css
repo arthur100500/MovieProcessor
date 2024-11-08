@@ -7,7 +7,7 @@
 .search {
     padding: 12px;
     width: 100%;
-    border: 1px solid #aaaaaa;
+    border: 1px solid #eeeeee;
     border-radius: 10px;
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
     font-size: 1.2rem;
@@ -16,6 +16,11 @@
 .submit {
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 10px;
-    border: 1px solid #aaaaaa;
+    background-color: #ffffff;
+    border: 1px solid #eeeeee;
     font-size: 1.2rem;
+}
+
+.submit:hover {
+    background-color: #fafafa;
 }
