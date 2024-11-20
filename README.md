@@ -10,6 +10,8 @@ Run time is avarage between 3 runs
 | 1 | 22bb500 |   1m 41s | -        | Initial build                                   |
 | 2 | 17c690a |   1m 05s | -        | Replaced CSVProvider by custom implementation   |
 | 3 | 168ffb9 |      45s | -        | Replaced Split() to Substring in critical parts |
+| 3 | 168ffb9 |   1m 20s | -        | Async with blocking collection                  |
+| 3 | 168ffb9 |   1m 01s | -        | Blocking collection + reading files parallel    |
 
 ### Improvement and implementation details
 
