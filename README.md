@@ -93,3 +93,19 @@ let fileIter parse (path: string) f =
 
     [addTask; parseTask; funcApplyTask] |> Task.WhenAll
 ```
+
+**Parallel implementation with blocking collection configurations:**
+There were two configurations, in first one every file was read one after another, just the operations while reading the file were parallel.
+```
+Task 3:                       Save Value   Save Value   Save Value ....
+Task 2:            Parse line | Parse line | Parse line | ....
+Task 1:  Read line | Read line  |  Read line |   ....
+Time:   +---------++-----------++-----------++--------------------------------> Finished first file, start second etc for 6 files
+```
+The second configuration was more parallel, it started reading Movies and People first, then Ratings, Tags and Links
+```
+Task 7-9:                   Links --------------------------|
+Task 4-6:   People --|      Ratings ------|
+Task 1-3:   Movies --------|Tags ------|                     Finish
+Time:   -----------------------------------------------------|----------------> Finished first file, start second etc for 6 files
+```
