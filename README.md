@@ -101,11 +101,14 @@ Task 3:                       Save Value   Save Value   Save Value ....
 Task 2:            Parse line | Parse line | Parse line | ....
 Task 1:  Read line | Read line  |  Read line |   ....
 Time:   +---------++-----------++-----------++--------------------------------> Finished first file, start second etc for 6 files
+
+Task 1-3:  Movies ----| People -----| Links -----------| Tags ---| Ratings ---| Finish
+Time:   +---------++-----------++-----------++--------------------------------> 
 ```
 The second configuration was more parallel, it started reading Movies and People first, then Ratings, Tags and Links
 ```
 Task 7-9:                   Links --------------------------|
 Task 4-6:   People --|      Ratings ------|
 Task 1-3:   Movies --------|Tags ------|                     Finish
-Time:   -----------------------------------------------------|----------------> Finished first file, start second etc for 6 files
+Time:   -----------------------------------------------------|----------------> 
 ```
