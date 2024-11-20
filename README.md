@@ -44,7 +44,7 @@ let splitLinks (line : string) =
 ```
 
 **Build 3:** Replaced string.Split() with string.Subsctring and indexOf in critical parts (while parsing top 3 biggest files)
-```
+```fsharp
 let splitMovieCodes (line : string) =
     let [|titleId; _; title; region; _; _; _; _|] = line.Split("\t")
     {titleId=titleId.Substring(2, 7) |> Int32.Parse
@@ -58,7 +58,7 @@ We tried limiting tasks using a counter and interlocked operations to have only 
 Secondly, the better way was blocking collection
 
 **Parallel implementation with blocking collection:** Blocking collection was used to create following pipeline instead of usual process:
-```
+```fsharp
 let fileIter parse (path: string) f =
     let fileReadStream = File.OpenRead path
     let fileReadCollection = new BlockingCollection<_>()
