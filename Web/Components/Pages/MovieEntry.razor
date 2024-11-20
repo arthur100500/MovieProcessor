@@ -1,43 +1,74 @@
 ﻿@using DatabaseInteraction
+@using Web.OMDBModel
+@inject HttpClient HttpClient
 
 <div class="movie-entry" onClick="window.location='/movie/@(Entry.MovieId)'">
-    <div class="movie-header-box">
-        <span class="movie-title"> @Entry.PrimaryTitle </span>
-        <span class="movie-rating"> @Entry.Rating ⭐ </span>
-    </div>
-    <div class="titled-list">
-        <span class="movie-section-title"> Actors: </span>
-        <div class="actors-list">
-            @foreach (var actor in Entry.GetActors(_context))
-            {
-                <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
-            }
-        </div>
-    </div>
-    <div class="titled-list">
-        <span class="movie-section-title"> Directors: </span>
-        <div class="directors-list">
-            @foreach (var actor in Entry.GetDirectors(_context))
-            {
-                <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
-            }
-        </div>
-    </div>
-    @if (!Entry.GetTags(_context).Any()) {
-    } else if (Entry.GetTags(_context).Count() < 10) {
-        <div class="directors-list">
-            @foreach (var tag in Entry.GetTags(_context)) { <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a> }
-        </div>
-    } else {
-        <div class="directors-list">
-            @foreach (var tag in Entry.GetTags(_context).Take(10)) { <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a> }
-            ...
-        </div>
+
+    @if (_movieData is not null && _movieData.Poster != "N/A")
+    {
+        <img class="movie-image" src="@_movieData.Poster" alt="">
     }
+    else
+    {
+        <div></div>
+    }
+
+    <div class="movie-text-content">
+        <div class="movie-header-box">
+            <span class="movie-title"> @Entry.PrimaryTitle </span>
+            <span class="movie-rating"> @Entry.Rating * </span>
+        </div>
+        <div class="titled-list">
+            <span class="movie-section-title"> Actors: </span>
+            <div class="actors-list">
+                @foreach (var actor in Entry.GetActors(_context))
+                {
+                    <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
+                }
+            </div>
+        </div>
+        <div class="titled-list">
+            <span class="movie-section-title"> Directors: </span>
+            <div class="directors-list">
+                @foreach (var actor in Entry.GetDirectors(_context))
+                {
+                    <a href=@($"/person/{actor.PersonId}")> @actor.PrimaryName </a>
+                }
+            </div>
+        </div>
+        @if (!Entry.GetTags(_context).Any())
+        {
+        }
+        else if (Entry.GetTags(_context).Count() < 10)
+        {
+            <div class="directors-list">
+                @foreach (var tag in Entry.GetTags(_context))
+                {
+                    <a class="tag-link" href=@($"/tag/{tag.TagId}")> @tag.Name </a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="tag-list">
+                @foreach (var tag in Entry.GetTags(_context).Take(10))
+                {
+                    <a class="tag-link" href=@($"/tag/{tag.TagId}") style="background-color: @Tags.GetTagColor(tag.TagId)"> @tag.Name </a>
+                }
+                ...
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    [Parameter]
-    public DatabaseInteraction.Movie Entry { get; set; }
+    [Parameter] public DatabaseInteraction.Movie Entry { get; set; }
     private ApplicationContext _context = DbFactory.GetContext();
+    private MovieData? _movieData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var movieData = await HttpClient.GetFromJsonAsync<MovieData>($"https://www.omdbapi.com/?i=tt{Entry.MovieId:0000000}&apikey=6cb57100");
+        _movieData = movieData;
+    }
 }

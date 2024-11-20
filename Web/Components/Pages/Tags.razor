@@ -3,20 +3,24 @@
 @using Microsoft.EntityFrameworkCore
 
 <div class="tag-list">
-    @foreach (var tag in _tags)
+    @foreach (var tag in _tags ?? [])
     {
-        <div class="tag-link">
-            <a href="/tag/@tag.TagId"> @tag.Name - @tag.CountMovies(_context) </a>
-        </div>
+        <a class="tag-link" href="/tag/@tag.TagId" style="background-color: @GetTagColor(tag.TagId)"> @tag.Name - @tag.CountMovies(_context) </a>
     }
 </div>
 
 @code {
-    private ApplicationContext _context = DbFactory.GetContext();
-    private List<DatabaseInteraction.Tag> _tags;
+    private readonly ApplicationContext _context = DbFactory.GetContext();
+    private List<DatabaseInteraction.Tag>? _tags;
 
     protected override async Task OnInitializedAsync()
     {
         _tags = await _context.Tags.ToListAsync();
+    }
+
+    public static string GetTagColor(int tagId)
+    {
+        var random = new Random(tagId);
+        return $"#{random.Next(200, 256):X2}{random.Next(200, 256):X2}{random.Next(200, 256):X2}";
     }
 }

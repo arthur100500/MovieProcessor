@@ -49,13 +49,15 @@ else
     {
         if (Collection is null) throw new ArgumentException("Collection was null");
         _loading = true;
+        StateHasChanged();
 
         try
         {
             var pagination = new Pagination<T>(Collection);
             _maxPage = pagination.GetMaxPage();
-            await Task.Delay(1);
+            StateHasChanged();
             _entries = await pagination.SelectPage(Page, UseNId);
+            StateHasChanged();
         }
         catch (Exception e)
         {
@@ -64,6 +66,7 @@ else
         finally
         {
             _loading = false;
+            StateHasChanged();
         }
     }
 }

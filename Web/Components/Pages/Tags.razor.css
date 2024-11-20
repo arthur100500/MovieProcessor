@@ -1,13 +1,20 @@
 ﻿.tag-link {
-    color: #000000;
-    background-color: #eeeeee;
-    border-radius: 0.2rem;
-    padding: 0.2rem;
-    text-decoration: none;
+    color: black;
+    border-radius: 0.35rem;
+    padding: 0.15rem 0.5rem;
+    word-break: keep-all;
+    white-space: nowrap;
+    margin: 0.1rem;
 }
 
 .tag-list {
     display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+    flex-wrap: wrap;
+}
+
+a {
+    padding-right: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 300;
+    text-decoration: none;
 }
